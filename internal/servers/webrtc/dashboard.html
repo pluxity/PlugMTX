@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediaMTX Dashboard</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.header {
+  background: #2d2d2d;
+  padding: 1rem 2rem;
+  border-bottom: 2px solid #404040;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.controls {
+  padding: 1rem 2rem;
+  background: #252525;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.controls select {
+  padding: 0.5rem;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.controls button {
+  padding: 0.5rem 1rem;
+  background: #0066cc;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.controls button:hover {
+  background: #0052a3;
+}
+
+.stream-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1rem;
+  padding: 1rem 2rem;
+}
+
+.stream-item {
+  background: #2d2d2d;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #404040;
+  transition: border-color 0.3s;
+}
+
+.stream-item:hover {
+  border-color: #0066cc;
+}
+
+.stream-header {
+  padding: 0.75rem 1rem;
+  background: #252525;
+  border-bottom: 1px solid #404040;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stream-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.stream-status {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.stream-status.connecting {
+  background: #ffaa00;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.stream-status.connected {
+  background: #00cc66;
+}
+
+.stream-status.error {
+  background: #cc0000;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.stream-video-container {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: rgb(30, 30, 30);
+  overflow: hidden;
+}
+
+.stream-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(30, 30, 30);
+}
+
+.stream-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #ccc;
+  padding: 1rem;
+  pointer-events: none;
+  text-shadow: 0 0 5px black;
+}
+
+.stream-info {
+  padding: 0.75rem 1rem;
+  background: #252525;
+  border-top: 1px solid #404040;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.fullscreen-btn {
+  background: #444;
+  border: none;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.fullscreen-btn:hover {
+  background: #555;
+}
+
+.ptz-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #1f1f1f;
+  border-top: 1px solid #404040;
+}
+
+.ptz-btn {
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.ptz-btn:hover {
+  background: #444;
+  border-color: #0066cc;
+}
+
+.ptz-btn:active {
+  background: #0066cc;
+  transform: scale(0.95);
+}
+
+.ptz-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.zoom-btn {
+  flex: 1;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.zoom-btn:hover {
+  background: #444;
+}
+
+.zoom-btn:active {
+  background: #0066cc;
+}
+</style>
+<script defer src="./reader.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <h1>MediaMTX Dashboard</h1>
+</div>
+
+<div class="controls">
+  <label>
+    Grid Layout:
+    <select id="gridSelector">
+      <option value="2">2 Columns</option>
+      <option value="3">3 Columns</option>
+      <option value="4">4 Columns</option>
+      <option value="6" selected>6 Columns</option>
+    </select>
+  </label>
+  <button id="refreshBtn">Refresh All</button>
+  <span id="streamCount" style="margin-left: auto; color: #999;"></span>
+</div>
+
+<div id="streamGrid" class="stream-grid"></div>
+
+<script>
+
+// PTZ-enabled cameras
+const PTZ_CAMERAS = ['CCTV-TEST1', 'CCTV-TEST2', 'CCTV-TEST3'];
+
+const STREAMS = [
+  '1_SM_CCTV_PLUXITY',
+  'CCTV-TEST1',
+  'CCTV-TEST2',
+  'CCTV-TEST3',
+  'CCTV-JEJU1-31',
+  'CCTV-JEJU1-32',
+  'CCTV-JEJU1-33',
+  'CCTV-JEJU1-34',
+  'CCTV-JEJU1-35',
+  'CCTV-JEJU1-36',
+  'CCTV-JEJU1-37',
+  'CCTV-JEJU1-38',
+  'CCTV-JEJU1-39',
+  'CCTV-JEJU1-40',
+  'CCTV-JEJU1-41',
+  'CCTV-JEJU1-42',
+  'CCTV-JEJU1-43',
+  'CCTV-JEJU1-44',
+  'CCTV-JEJU1-45',
+  'CCTV-JEJU2-31',
+  'CCTV-JEJU2-32',
+  'CCTV-JEJU2-33',
+  'CCTV-JEJU2-34',
+  'CCTV-JEJU2-35',
+  'CCTV-JEJU2-36',
+  'CCTV-JEJU2-37',
+  'CCTV-JEJU2-38',
+  'CCTV-JEJU2-39',
+  'CCTV-JEJU2-40',
+  'CCTV-JEJU2-41',
+  'CCTV-JEJU2-42',
+  'CCTV-JEJU2-43',
+  'CCTV-JEJU2-44',
+  'CCTV-JEJU2-45',
+];
+
+const readers = {};
+
+const gridSelector = document.getElementById('gridSelector');
+const streamGrid = document.getElementById('streamGrid');
+const refreshBtn = document.getElementById('refreshBtn');
+const streamCount = document.getElementById('streamCount');
+
+const updateGridLayout = () => {
+  const columns = gridSelector.value;
+  streamGrid.style.gridTemplateColumns = `repeat(auto-fit, minmax(${Math.floor(100 / columns) - 2}%, 1fr))`;
+};
+
+const setStreamStatus = (streamName, status) => {
+  const statusEl = document.querySelector(`#stream-${streamName} .stream-status`);
+  if (statusEl) {
+    statusEl.className = `stream-status ${status}`;
+  }
+};
+
+const setStreamMessage = (streamName, message) => {
+  const messageEl = document.querySelector(`#stream-${streamName} .stream-message`);
+  if (messageEl) {
+    messageEl.innerText = message;
+  }
+};
+
+const createStreamElement = (streamName) => {
+  const streamItem = document.createElement('div');
+  streamItem.className = 'stream-item';
+  streamItem.id = `stream-${streamName}`;
+
+  const hasPTZ = PTZ_CAMERAS.includes(streamName);
+
+  let ptzControls = '';
+  if (hasPTZ) {
+    ptzControls = `
+      <div class="ptz-controls">
+        <button class="ptz-btn disabled"></button>
+        <button class="ptz-btn" data-action="up" data-camera="${streamName}">▲</button>
+        <button class="ptz-btn disabled"></button>
+        <button class="ptz-btn" data-action="left" data-camera="${streamName}">◀</button>
+        <button class="ptz-btn" data-action="home" data-camera="${streamName}">⌂</button>
+        <button class="ptz-btn" data-action="right" data-camera="${streamName}">▶</button>
+        <button class="ptz-btn disabled"></button>
+        <button class="ptz-btn" data-action="down" data-camera="${streamName}">▼</button>
+        <button class="ptz-btn disabled"></button>
+      </div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" data-action="zoom-out" data-camera="${streamName}">Zoom -</button>
+        <button class="zoom-btn" data-action="zoom-in" data-camera="${streamName}">Zoom +</button>
+      </div>
+    `;
+  }
+
+  streamItem.innerHTML = `
+    <div class="stream-header">
+      <span class="stream-name">${streamName}</span>
+      <span class="stream-status connecting"></span>
+    </div>
+    <div class="stream-video-container">
+      <video class="stream-video" id="video-${streamName}" autoplay muted playsinline></video>
+      <div class="stream-message">Connecting...</div>
+    </div>
+    <div class="stream-info">
+      <button class="fullscreen-btn" onclick="toggleFullscreen('${streamName}')">Fullscreen</button>
+    </div>
+    ${ptzControls}
+  `;
+
+  return streamItem;
+};
+
+const initializeStream = (streamName) => {
+  const video = document.getElementById(`video-${streamName}`);
+
+  if (readers[streamName]) {
+    readers[streamName].close();
+    delete readers[streamName];
+  }
+
+  setStreamStatus(streamName, 'connecting');
+  setStreamMessage(streamName, 'Connecting...');
+
+  const reader = new MediaMTXWebRTCReader({
+    url: new URL(`/${streamName}/whep`, window.location.href).toString(),
+    onError: (err) => {
+      setStreamStatus(streamName, 'error');
+      setStreamMessage(streamName, err);
+      video.controls = false;
+    },
+    onTrack: (evt) => {
+      setStreamStatus(streamName, 'connected');
+      setStreamMessage(streamName, '');
+      video.srcObject = evt.streams[0];
+      video.controls = true;
+    },
+  });
+
+  readers[streamName] = reader;
+};
+
+const toggleFullscreen = (streamName) => {
+  const video = document.getElementById(`video-${streamName}`);
+  if (video) {
+    if (video.requestFullscreen) {
+      video.requestFullscreen();
+    } else if (video.webkitRequestFullscreen) {
+      video.webkitRequestFullscreen();
+    } else if (video.mozRequestFullScreen) {
+      video.mozRequestFullScreen();
+    } else if (video.msRequestFullscreen) {
+      video.msRequestFullscreen();
+    }
+  }
+};
+
+const refreshAllStreams = () => {
+  STREAMS.forEach(streamName => {
+    initializeStream(streamName);
+  });
+};
+
+// PTZ Control Functions
+const ptzMove = async (camera, pan, tilt, zoom) => {
+  try {
+    const response = await fetch(`/ptz/${camera}/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pan, tilt, zoom })
+    });
+    const data = await response.json();
+    if (!data.success) {
+      console.error('PTZ move failed:', data.message);
+    }
+  } catch (error) {
+    console.error('PTZ move error:', error);
+  }
+};
+
+const ptzStop = async (camera) => {
+  try {
+    const response = await fetch(`/ptz/${camera}/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    if (!data.success) {
+      console.error('PTZ stop failed:', data.message);
+    }
+  } catch (error) {
+    console.error('PTZ stop error:', error);
+  }
+};
+
+const ptzGotoPreset = async (camera, presetId) => {
+  try {
+    const response = await fetch(`/ptz/${camera}/preset/${presetId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    if (!data.success) {
+      console.error('PTZ preset failed:', data.message);
+    }
+  } catch (error) {
+    console.error('PTZ preset error:', error);
+  }
+};
+
+const handlePTZAction = (action, camera) => {
+  const speed = 40;
+
+  switch (action) {
+    case 'up':
+      ptzMove(camera, 0, speed, 0);
+      break;
+    case 'down':
+      ptzMove(camera, 0, -speed, 0);
+      break;
+    case 'left':
+      ptzMove(camera, -speed, 0, 0);
+      break;
+    case 'right':
+      ptzMove(camera, speed, 0, 0);
+      break;
+    case 'zoom-in':
+      ptzMove(camera, 0, 0, speed);
+      break;
+    case 'zoom-out':
+      ptzMove(camera, 0, 0, -speed);
+      break;
+    case 'home':
+      ptzGotoPreset(camera, 34); // Back to origin preset
+      break;
+  }
+};
+
+const initializePTZControls = () => {
+  document.querySelectorAll('.ptz-btn:not(.disabled), .zoom-btn').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    const camera = btn.getAttribute('data-camera');
+
+    if (!action || !camera) return;
+
+    // Mouse events
+    btn.addEventListener('mousedown', () => {
+      handlePTZAction(action, camera);
+    });
+
+    btn.addEventListener('mouseup', () => {
+      if (action !== 'home') {
+        ptzStop(camera);
+      }
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      if (action !== 'home') {
+        ptzStop(camera);
+      }
+    });
+
+    // Touch events for mobile
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handlePTZAction(action, camera);
+    });
+
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (action !== 'home') {
+        ptzStop(camera);
+      }
+    });
+  });
+};
+
+const initializeDashboard = () => {
+  streamCount.innerText = `Total Streams: ${STREAMS.length}`;
+
+  STREAMS.forEach(streamName => {
+    const streamElement = createStreamElement(streamName);
+    streamGrid.appendChild(streamElement);
+  });
+
+  updateGridLayout();
+  initializePTZControls();
+
+  setTimeout(() => {
+    STREAMS.forEach(streamName => {
+      initializeStream(streamName);
+    });
+  }, 100);
+};
+
+gridSelector.addEventListener('change', updateGridLayout);
+refreshBtn.addEventListener('click', refreshAllStreams);
+
+window.addEventListener('load', () => {
+  initializeDashboard();
+});
+
+window.addEventListener('beforeunload', () => {
+  Object.values(readers).forEach(reader => {
+    if (reader !== null) {
+      reader.close();
+    }
+  });
+});
+
+window.toggleFullscreen = toggleFullscreen;
+
+</script>
+
+</body>
+</html>

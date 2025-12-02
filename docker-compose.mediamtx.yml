@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mediamtx:
+    image: mediamtx:local
+    container_name: aiot-mediamtx
+    restart: unless-stopped
+
+    ports:
+      - "${MEDIA_MTX_WEBRTC_PORT}:8117"      # WebRTC 시그널링 + Dashboard
+      - "${MEDIA_MTX_WEBRTC_UDP_PORT}:8118/udp"  # WebRTC ICE/UDP
+      - "${MEDIA_MTX_API_PORT}:8119"         # API
+      - "${MEDIA_MTX_HLS_PORT}:8120"         # HLS
+      - "${MEDIA_MTX_RTSP_PORT}:8121"        # RTSP
+
+    volumes:
+      # Configuration file
+      - ./mediamtx.yml:/app/mediamtx.yml:ro
+
+      # Logs
+      - ./log/mediamtx:/var/log/mediamtx
+
+      # Recordings (optional - uncomment if needed)
+      # - ./mediamtx/recordings:/app/recordings
+
+    environment:
+      # Timezone
+      - TZ=${TZ:-Asia/Seoul}
+
+      # Port information for frontend (used by /config/ports API)
+      - MTX_API_PORT=8119
+      - MTX_HLS_PORT=8120
+      - MTX_RTSP_PORT=8121
+
+    # Logging configuration
+    logging:
+      driver: "local"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Health check (uses internal API port 8119)
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8119/v3/config/global"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Optional: Create named volumes
+# volumes:
+#   mediamtx-recordings:
+#     driver: local

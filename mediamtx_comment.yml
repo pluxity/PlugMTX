@@ -1,0 +1,715 @@
+###############################################
+# 전역 설정 (Global settings)
+
+# 이 섹션의 설정은 모든 곳에 적용됩니다.
+
+###############################################
+# 전역 설정 -> 일반 (General)
+
+# 프로그램 로그의 상세 수준입니다. 사용 가능한 값: "error", "warn", "info", "debug".
+logLevel: info
+# 로그 메시지 출력 대상입니다. 사용 가능한 값: "stdout", "file", "syslog".
+logDestinations: [stdout]
+# logDestinations에 "file"이 포함된 경우, 로그가 저장될 파일명입니다.
+logFile: mediamtx.log
+# logDestinations에 "syslog"가 포함된 경우, 로그에 사용할 접두사입니다.
+sysLogPrefix: mediamtx
+
+# 읽기 작업의 시간 제한(Timeout)입니다.
+readTimeout: 10s
+# 쓰기 작업의 시간 제한(Timeout)입니다.
+writeTimeout: 10s
+# 나가는 패킷의 큐(Queue) 크기입니다.
+# 값이 높으면 처리량이 증가하지만, 낮으면 RAM을 절약할 수 있습니다.
+writeQueueSize: 512
+# 나가는 UDP 패킷의 최대 크기입니다.
+# UDP MTU가 낮은 네트워크에서 단편화(fragmentation)를 피하기 위해 값을 줄일 수 있습니다.
+udpMaxPayloadSize: 1472
+# 모든 UDP 소켓의 읽기 버퍼 크기입니다.
+# 패킷 손실을 줄이려면 이 값을 늘리십시오.
+# 기본값은 운영체제의 기본값을 따릅니다.
+udpReadBufferSize: 0
+
+# 클라이언트가 서버에 연결할 때 실행할 명령어입니다.
+# 클라이언트가 연결을 끊으면 이 프로세스는 SIGINT 신호로 종료됩니다.
+# 다음 환경 변수를 사용할 수 있습니다:
+# * MTX_CONN_TYPE: 연결 유형
+# * MTX_CONN_ID: 연결 ID
+# * RTSP_PORT: RTSP 서버 포트
+runOnConnect:
+# 명령어가 종료될 경우 다시 시작할지 여부입니다.
+runOnConnectRestart: no
+# 클라이언트가 서버 연결을 끊을 때 실행할 명령어입니다.
+# 환경 변수는 runOnConnect와 동일합니다.
+runOnDisconnect:
+
+###############################################
+# 전역 설정 -> 인증 (Authentication)
+
+# 인증 방법입니다. 사용 가능한 값:
+# * internal: 자격 증명이 설정 파일 내에 저장됨
+# * http: 인증을 수행하기 위해 외부 HTTP URL로 접속함
+# * jwt: 외부 인증 서버가 JWT를 통해 인증을 제공함
+authMethod: internal
+
+# 내부 인증 (Internal authentication).
+# 사용자 목록입니다.
+authInternalUsers:
+  # 기본 비권한 사용자.
+  # 사용자명. 'any'는 익명을 포함한 모든 사용자를 의미합니다.
+  - user: any
+    # 비밀번호. 사용자가 'any'일 경우 사용되지 않습니다.
+    pass:
+    # 이 사용자를 허용할 IP 또는 네트워크 목록. 비어 있으면 모든 IP 허용.
+    ips: []
+    # 권한 목록.
+    permissions:
+      # 사용 가능한 작업(action): publish, read, playback, api, metrics, pprof.
+      - action: publish
+        # 특정 경로(path)에 대한 액세스를 제한할 수 있습니다.
+        # 경로가 비어 있으면 모든 경로를 의미합니다.
+        # 물결표(~)를 접두사로 사용하여 정규 표현식을 사용할 수 있습니다.
+        path:
+      - action: read
+        path:
+      - action: playback
+        path:
+
+    # 기본 관리자.
+    # IP가 localhost인 경우 인증 없이 API, metrics, PPROF를 사용할 수 있도록 허용합니다.
+  - user: any
+    pass:
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: api
+      - action: metrics
+      - action: pprof
+
+# HTTP 기반 인증.
+# 인증을 수행하기 위해 호출되는 URL입니다. 사용자가 인증을 시도할 때마다
+# 서버는 이 URL을 POST 메서드로 호출하며 본문(body)에 다음을 포함합니다:
+# {
+#   "user": "user",
+#   "password": "password",
+#   "token": "token",
+#   "ip": "ip",
+#   "action": "publish|read|playback|api|metrics|pprof",
+#   "path": "path",
+#   "protocol": "rtsp|rtmp|hls|webrtc|srt",
+#   "id": "id",
+#   "query": "query"
+# }
+# 응답 코드가 20x이면 인증이 수락되고, 그렇지 않으면 거부됩니다.
+authHTTPAddress:
+# HTTP 기반 인증에서 제외할 작업 목록입니다.
+# 형식은 사용자 권한(permissions)과 동일합니다.
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# JWT 기반 인증.
+# 사용자는 외부 인증 서버를 통해 로그인하고 JWT를 획득해야 합니다.
+# 이 JWT는 권한 정보가 담긴 "mediamtx_permissions" 클레임을 포함해야 합니다.
+# 예시:
+# {
+#  "mediamtx_permissions": [
+#     {
+#       "action": "publish",
+#       "path": "somepath"
+#     }
+#   ]
+# }
+# 사용자는 Authorization 헤더 또는 비밀번호로 JWT를 전달해야 합니다.
+# JWT 유효성 검사를 위한 공개 키를 가져올(한 번만) JWKS URL입니다.
+authJWTJWKS:
+# JWKS URL이 자체 서명되었거나 유효하지 않은 인증서를 사용하는 경우,
+# 인증서를 강제로 유효성 검사하기 위해 핑거프린트(지문)를 제공할 수 있습니다.
+# 다음 명령어로 얻을 수 있습니다:
+# openssl s_client -connect jwt_jwks_domain:443 </dev/null 2>/dev/null | sed -n '/BEGIN/,/END/p' > server.crt
+# openssl x509 -in server.crt -noout -fingerprint -sha256 | cut -d "=" -f2 | tr -d ':'
+authJWTJWKSFingerprint:
+# 권한을 포함하는 클레임의 이름입니다.
+authJWTClaimKey: mediamtx_permissions
+# JWT 기반 인증에서 제외할 작업 목록입니다.
+# 형식은 사용자 권한(permissions)과 동일합니다.
+authJWTExclude: []
+# HTTP 요청의 쿼리 파라미터를 통해 JWT 전달을 허용할지 여부 (예: ?jwt=JWT).
+# 이는 보안 위험이 있으므로 향후 기본적으로 비활성화될 예정입니다.
+authJWTInHTTPQuery: true
+
+###############################################
+# 전역 설정 -> 제어 API (Control API)
+
+# 제어 API를 통한 서버 제어를 활성화합니다.
+api: no
+# 제어 API 리스너 주소입니다.
+apiAddress: :9997
+# 제어 API 서버에서 TLS/HTTPS를 활성화합니다.
+apiEncryption: no
+# 서버 키 경로입니다. 암호화가 yes일 때만 필요합니다.
+# 다음 명령어로 생성할 수 있습니다:
+# openssl genrsa -out server.key 2048
+# openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+apiServerKey: server.key
+# 서버 인증서 경로입니다.
+apiServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+apiAllowOrigins: ['*']
+# HTTP 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+apiTrustedProxies: []
+
+###############################################
+# 전역 설정 -> 메트릭 (Metrics)
+
+# Prometheus 호환 메트릭을 활성화합니다.
+metrics: no
+# 메트릭 HTTP 리스너 주소입니다.
+metricsAddress: :9998
+# 메트릭 서버에서 TLS/HTTPS를 활성화합니다.
+metricsEncryption: no
+# 서버 키 경로입니다. 암호화가 yes일 때만 필요합니다.
+# 생성 방법은 위와 동일합니다.
+metricsServerKey: server.key
+# 서버 인증서 경로입니다.
+metricsServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+metricsAllowOrigins: ['*']
+# HTTP 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+metricsTrustedProxies: []
+
+###############################################
+# 전역 설정 -> PPROF
+
+# 성능 모니터링을 위한 pprof 호환 엔드포인트를 활성화합니다.
+pprof: no
+# pprof 리스너 주소입니다.
+pprofAddress: :9999
+# pprof 서버에서 TLS/HTTPS를 활성화합니다.
+pprofEncryption: no
+# 서버 키 경로입니다. 암호화가 yes일 때만 필요합니다.
+# 생성 방법은 위와 동일합니다.
+pprofServerKey: server.key
+# 서버 인증서 경로입니다.
+pprofServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+pprofAllowOrigins: ['*']
+# HTTP 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+pprofTrustedProxies: []
+
+###############################################
+# 전역 설정 -> 재생 서버 (Playback server)
+
+# 재생 서버에서 녹화 파일 다운로드를 활성화합니다.
+playback: no
+# 재생 서버 리스너 주소입니다.
+playbackAddress: :9996
+# 재생 서버에서 TLS/HTTPS를 활성화합니다.
+playbackEncryption: no
+# 서버 키 경로입니다. 암호화가 yes일 때만 필요합니다.
+# 생성 방법은 위와 동일합니다.
+playbackServerKey: server.key
+# 서버 인증서 경로입니다.
+playbackServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+playbackAllowOrigins: ['*']
+# HTTP 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+playbackTrustedProxies: []
+
+###############################################
+# 전역 설정 -> RTSP 서버 (RTSP server)
+
+# RTSP 프로토콜을 사용한 스트림 게시(Publishing) 및 읽기를 활성화합니다.
+rtsp: yes
+# 활성화된 RTSP 전송 프로토콜 목록입니다.
+# UDP는 성능이 가장 좋지만, 서버와 클라이언트 사이에 NAT/방화벽이 있으면 작동하지 않을 수 있습니다.
+# UDP-multicast는 클라이언트가 모두 동일한 LAN에 있을 때 대역폭을 절약할 수 있습니다.
+# TCP는 가장 호환성이 좋습니다.
+# 핸드셰이크는 항상 TCP로 수행됩니다.
+rtspTransports: [udp, multicast, tcp]
+# 보안 프로토콜 변형(RTSPS, TLS, SRTP)을 사용합니다.
+# 사용 가능한 값: "no", "strict", "optional".
+rtspEncryption: "no"
+# TCP/RTSP 리스너 주소입니다. 암호화가 "no" 또는 "optional"일 때 필요합니다.
+rtspAddress: :8554
+# TCP/TLS/RTSPS 리스너 주소입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+rtspsAddress: :8322
+# UDP/RTP 리스너 주소입니다. rtspTransports에 "udp"가 포함된 경우 필요합니다.
+rtpAddress: :8000
+# UDP/RTCP 리스너 주소입니다. rtspTransports에 "udp"가 포함된 경우 필요합니다.
+rtcpAddress: :8001
+# 모든 UDP-multicast 리스너의 IP 범위입니다. rtspTransports에 "multicast"가 포함된 경우 필요합니다.
+multicastIPRange: 224.1.0.0/16
+# 모든 UDP-multicast/RTP 리스너의 포트입니다. rtspTransports에 "multicast"가 포함된 경우 필요합니다.
+multicastRTPPort: 8002
+# 모든 UDP-multicast/RTCP 리스너의 포트입니다. rtspTransports에 "multicast"가 포함된 경우 필요합니다.
+multicastRTCPPort: 8003
+# UDP/SRTP 리스너 주소입니다. rtspTransports에 "udp"가 있고 암호화가 활성화된 경우 필요합니다.
+srtpAddress: :8004
+# UDP/SRTCP 리스너 주소입니다. rtspTransports에 "udp"가 있고 암호화가 활성화된 경우 필요합니다.
+srtcpAddress: :8005
+# 모든 UDP-multicast/SRTP 리스너 포트입니다. rtspTransports에 "multicast"가 있고 암호화가 활성화된 경우 필요합니다.
+multicastSRTPPort: 8006
+# 모든 UDP-multicast/SRTCP 리스너 포트입니다. rtspTransports에 "multicast"가 있고 암호화가 활성화된 경우 필요합니다.
+multicastSRTCPPort: 8007
+# 서버 키 경로입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+# 생성 방법은 위와 동일합니다.
+rtspServerKey: server.key
+# 서버 인증서 경로입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+rtspServerCert: server.crt
+# 인증 방법입니다. "basic"과 "digest"를 사용할 수 있습니다.
+# "digest"는 추가적인 보안을 제공하지 않으며 호환성을 위해서만 제공됩니다.
+rtspAuthMethods: [basic]
+
+###############################################
+# 전역 설정 -> RTMP 서버 (RTMP server)
+
+# RTMP 프로토콜을 사용한 스트림 게시 및 읽기를 활성화합니다.
+rtmp: yes
+# RTMP 리스너 주소입니다. 암호화가 "no" 또는 "optional"일 때 필요합니다.
+rtmpAddress: :1935
+# TLS를 사용하여 연결을 암호화합니다 (RTMPS).
+# 사용 가능한 값: "no", "strict", "optional".
+rtmpEncryption: "no"
+# RTMPS 리스너 주소입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+rtmpsAddress: :1936
+# 서버 키 경로입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+# 생성 방법은 위와 동일합니다.
+rtmpServerKey: server.key
+# 서버 인증서 경로입니다. 암호화가 "strict" 또는 "optional"일 때 필요합니다.
+rtmpServerCert: server.crt
+
+###############################################
+# 전역 설정 -> HLS 서버 (HLS server)
+
+# HLS 프로토콜을 사용한 스트림 읽기를 활성화합니다.
+hls: yes
+# HLS 리스너 주소입니다.
+hlsAddress: :8888
+# HLS 서버에서 TLS/HTTPS를 활성화합니다.
+# Low-Latency HLS를 사용하려면 필수입니다.
+hlsEncryption: no
+# 서버 키 경로입니다. 암호화가 yes일 때만 필요합니다.
+# 생성 방법은 위와 동일합니다.
+hlsServerKey: server.key
+# 서버 인증서 경로입니다.
+hlsServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+hlsAllowOrigins: ['*']
+# HLS 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+hlsTrustedProxies: []
+# 기본적으로 HLS는 사용자가 요청할 때만 생성됩니다.
+# 이 옵션을 사용하면 항상 생성하도록 하여, 요청과 생성 사이의 지연을 방지할 수 있습니다.
+hlsAlwaysRemux: no
+# 사용할 HLS 프로토콜의 변형입니다. 사용 가능한 옵션:
+# * mpegts - MPEG-TS 세그먼트를 사용, 호환성 최대화.
+# * fmp4 - fragmented MP4 세그먼트를 사용, 더 효율적.
+# * lowLatency - Low-Latency HLS를 사용.
+hlsVariant: lowLatency
+# 서버에 보관할 HLS 세그먼트 개수입니다.
+# 세그먼트를 통해 스트림을 탐색(seek)할 수 있습니다.
+# 이 개수는 지연 시간(latency)에 영향을 주지 않습니다.
+hlsSegmentCount: 7
+# 각 세그먼트의 최소 지속 시간입니다.
+# 플레이어는 보통 스트림 재생 전 버퍼에 3개의 세그먼트를 넣습니다.
+# 최종 세그먼트 길이는 IDR 프레임 간격에도 영향을 받습니다.
+# 서버가 각 세그먼트에 최소 하나의 IDR 프레임을 포함하기 위해 길이를 조정하기 때문입니다.
+hlsSegmentDuration: 1s
+# 각 파트(part)의 최소 지속 시간입니다.
+# 플레이어는 보통 스트림 재생 전 버퍼에 3개의 파트를 넣습니다.
+# 파트는 Low-Latency HLS에서 세그먼트 대신 사용됩니다.
+# 파트 길이는 비디오/오디오 샘플 간격에 영향을 받으며 유사한 길이를 생성하도록 조정됩니다.
+hlsPartDuration: 200ms
+# 각 세그먼트의 최대 크기입니다.
+# RAM 고갈을 방지합니다.
+hlsSegmentMaxSize: 50M
+# 세그먼트를 RAM 대신 저장할 디렉토리입니다.
+# 디스크 읽기가 RAM 읽기보다 느리므로 성능은 저하되지만 RAM을 절약할 수 있습니다.
+hlsDirectory: ''
+# 읽기 요청(reader)이 없고 이 시간이 지나면 muxer가 닫힙니다.
+hlsMuxerCloseAfter: 60s
+
+###############################################
+# 전역 설정 -> WebRTC 서버 (WebRTC server)
+
+# WebRTC 프로토콜을 사용한 스트림 게시 및 읽기를 활성화합니다.
+webrtc: yes
+# WebRTC HTTP 리스너 주소입니다. (Signaling 용)
+webrtcAddress: :8889
+# WebRTC 서버에서 TLS/HTTPS를 활성화합니다.
+webrtcEncryption: no
+# 서버 키 경로입니다.
+# 생성 방법은 위와 동일합니다.
+webrtcServerKey: server.key
+# 서버 인증서 경로입니다.
+webrtcServerCert: server.crt
+# 허용된 CORS 출처(Origin) 목록입니다.
+# 와일드카드를 지원합니다: ['http://*.example.com']
+webrtcAllowOrigins: ['*']
+# WebRTC 서버 앞에 위치한 프록시의 IP 또는 CIDR 목록입니다.
+# 이 목록에 있는 곳에서 요청을 받으면, 로그의 IP는 X-Forwarded-For 헤더에서 가져옵니다.
+webrtcTrustedProxies: []
+# 연결을 수신할 로컬 UDP 리스너 주소입니다. (Media 용)
+# 비활성화하려면 빈 문자열을 사용하십시오.
+webrtcLocalUDPAddress: :8189
+# 연결을 수신할 로컬 TCP 리스너 주소입니다.
+# TCP는 UDP보다 효율이 떨어지고 네트워크 혼잡 시 점진적 지연이 발생하므로 기본적으로 비활성화되어 있습니다.
+webrtcLocalTCPAddress: ''
+# WebRTC 클라이언트는 서버의 IP를 알아야 합니다.
+# 인터페이스에서 IP를 수집하여 클라이언트에게 전송합니다.
+webrtcIPsFromInterfaces: yes
+# 클라이언트에게 전송할 IP가 있는 인터페이스 목록입니다.
+# 비어 있으면 사용 가능한 모든 인터페이스를 사용합니다.
+webrtcIPsFromInterfacesList: []
+# 클라이언트에게 전송할 추가 호스트 또는 IP 목록입니다.
+webrtcAdditionalHosts: []
+# ICE 서버 목록입니다. 로컬 리스너가 클라이언트에게 도달할 수 없을 때만 필요합니다.
+# STUN 서버는 서버의 공인 IP를 얻고 공유할 수 있게 합니다.
+# TURN/TURNS 서버는 모든 트래픽을 해당 서버를 통해 강제로 전송합니다.
+webrtcICEServers2: []
+  # - url: stun:stun.l.google.com:19302
+  # user가 "AUTH_SECRET"인 경우, 인증은 비밀 기반입니다.
+  # 비밀(secret)은 password 필드에 입력해야 합니다.
+  # username: ''
+  # password: ''
+# clientOnly: false
+# WebRTC 핸드셰이크 완료를 대기하는 시간입니다.
+webrtcHandshakeTimeout: 10s
+# 비디오 트랙을 수집하는 최대 시간입니다.
+webrtcTrackGatherTimeout: 2s
+# STUN 후보를 수집하는 최대 시간입니다.
+webrtcSTUNGatherTimeout: 5s
+
+###############################################
+# 전역 설정 -> SRT 서버 (SRT server)
+
+# SRT 프로토콜을 사용한 스트림 게시 및 읽기를 활성화합니다.
+srt: yes
+# SRT 리스너 주소입니다.
+srtAddress: :8890
+
+###############################################
+# 기본 경로 설정 (Default path settings)
+
+# "pathDefaults" 섹션의 설정은 "paths"에서 재정의되지 않는 한
+# 모든 곳에 적용됩니다.
+pathDefaults:
+
+  ###############################################
+  # 기본 경로 설정 -> 일반 (General)
+
+  # 스트림의 소스입니다. 다음 값을 사용할 수 있습니다:
+  # * publisher -> 스트림이 RTSP, RTMP, WebRTC 또는 SRT 클라이언트에 의해 제공됨
+  # * rtsp://existing-url -> 다른 RTSP 서버/카메라에서 스트림을 가져옴
+  # * rtsps://existing-url -> 다른 RTSP 서버/카메라에서 RTSPS로 스트림을 가져옴
+  # * rtsp+http://existing-url -> HTTP 터널링을 통해 다른 RTSP 서버/카메라에서 스트림을 가져옴
+  # * rtsps+http://existing-url -> HTTPS 터널링을 통해 다른 RTSP 서버/카메라에서 스트림을 가져옴
+  # * rtsp+ws://existing-url -> WebSocket 터널링을 통해 다른 RTSP 서버/카메라에서 스트림을 가져옴
+  # * rtsps+ws://existing-url -> 보안 WebSocket 터널링을 통해 다른 RTSP 서버/카메라에서 스트림을 가져옴
+  # * rtmp://existing-url -> 다른 RTMP 서버/카메라에서 스트림을 가져옴
+  # * rtmps://existing-url -> RTMPS로 다른 RTMP 서버/카메라에서 스트림을 가져옴
+  # * http://existing-url/stream.m3u8 -> 다른 HLS 서버/카메라에서 스트림을 가져옴
+  # * https://existing-url/stream.m3u8 -> HTTPS로 다른 HLS 서버/카메라에서 스트림을 가져옴
+  # * udp+mpegts://ip:port -> 지정된 주소에서 수신하여 UDP를 통한 MPEG-TS 스트림을 가져옴
+  # * unix+mpegts://socket -> 소켓을 사용하여 Unix 소켓을 통한 MPEG-TS 스트림을 가져옴
+  # * udp+rtp://ip:port -> 지정된 주소에서 수신하여 UDP를 통한 RTP 스트림을 가져옴
+  # * unix+rtp://socket -> 소켓을 사용하여 Unix 소켓을 통한 RTP 스트림을 가져옴
+  # * srt://existing-url -> 다른 SRT 서버/카메라에서 스트림을 가져옴
+  # * whep://existing-url -> 다른 WebRTC 서버/카메라에서 스트림을 가져옴
+  # * wheps://existing-url -> HTTPS로 다른 WebRTC 서버/카메라에서 스트림을 가져옴
+  # * redirect -> 스트림이 다른 경로 또는 서버에 의해 제공됨
+  # * rpiCamera -> 스트림이 Raspberry Pi 카메라에 의해 제공됨
+  # 소스 문자열에서 다음 변수를 사용할 수 있습니다:
+  # * $MTX_QUERY: 쿼리 파라미터 (첫 번째 리더가 전달)
+  # * $G1, $G2, ...: 경로 이름이 정규 표현식인 경우, 정규 표현식 그룹
+  source: publisher
+  # 소스가 URL이고 소스의 TLS 인증서가 자체 서명되었거나 유효하지 않은 경우,
+  # 인증서를 강제로 유효성 검사하기 위해 핑거프린트(지문)를 제공할 수 있습니다.
+  # 다음 명령어로 얻을 수 있습니다:
+  # openssl s_client -connect source_ip:source_port </dev/null 2>/dev/null | sed -n '/BEGIN/,/END/p' > server.crt
+  # openssl x509 -in server.crt -noout -fingerprint -sha256 | cut -d "=" -f2 | tr -d ':'
+  sourceFingerprint:
+  # 소스가 URL인 경우, 최소 한 명의 리더(시청자)가 연결되었을 때만 가져와 대역폭을 절약합니다.
+  sourceOnDemand: no
+  # sourceOnDemand가 "yes"인 경우, 리더는 소스가 준비되거나 이 시간이 지날 때까지 대기 상태가 됩니다.
+  sourceOnDemandStartTimeout: 10s
+  # sourceOnDemand가 "yes"인 경우, 연결된 리더가 없고 이 시간이 지나면 소스가 닫힙니다.
+  sourceOnDemandCloseAfter: 10s
+  # 최대 리더(시청자) 수입니다. 0은 제한 없음을 의미합니다.
+  maxReaders: 0
+  # 이 경로에서 읽기 위해 필요한 SRT 암호화 비밀번호입니다.
+  srtReadPassphrase:
+  # 스트림을 사용할 수 없는 경우 리더를 이 경로로 리다이렉트합니다.
+  # 상대 경로(예: /otherstream) 또는 절대 RTSP URL일 수 있습니다.
+  fallback:
+  # 프레임을 현재 시간으로 대체하는 대신 프레임의 절대 타임스탬프를 사용합니다.
+  useAbsoluteTimestamp: false
+
+  ###############################################
+  # 기본 경로 설정 -> 녹화 (Record)
+
+  # 스트림을 디스크에 녹화합니다.
+  record: no
+  # 녹화 세그먼트의 경로입니다.
+  # 확장자는 자동으로 추가됩니다.
+  # 사용 가능한 변수: %path (경로명), %Y %m %d (연, 월, 일),
+  # %H %M %S (시, 분, 초), %f (마이크로초), %z (타임존), %s (unix epoch).
+  recordPath: ./recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  # 녹화 세그먼트 포맷입니다.
+  # 사용 가능한 포맷: "fmp4" (fragmented MP4), "mpegts" (MPEG-TS).
+  recordFormat: fmp4
+  # fMP4 세그먼트는 이 지속 시간을 가진 작은 MP4 파일(파트)들의 연결입니다.
+  # MPEG-TS 세그먼트는 188바이트 패킷들의 연결이며, 이 주기로 디스크에 플러시됩니다.
+  # 시스템 오류 발생 시 마지막 파트는 손실됩니다.
+  # 따라서 파트 지속 시간은 RPO(복구 시점 목표)와 같습니다.
+  recordPartDuration: 1s
+  # RAM 고갈을 방지합니다.
+  recordMaxPartSize: 50M
+  # 각 세그먼트의 최소 지속 시간입니다.
+  recordSegmentDuration: 1h
+  # 이 기간이 지나면 세그먼트를 삭제합니다.
+  # 0s로 설정하면 자동 삭제를 비활성화합니다.
+  recordDeleteAfter: 1d
+
+  ###############################################
+  # 기본 경로 설정 -> 게시자 소스 (source가 "publisher"일 때)
+
+  # 다른 클라이언트가 현재 게시자(Publisher)의 연결을 끊고 그 자리에 게시하는 것을 허용합니다.
+  overridePublisher: yes
+  # 이 경로에 게시하기 위해 필요한 SRT 암호화 비밀번호입니다.
+  srtPublishPassphrase:
+
+  ###############################################
+  # 기본 경로 설정 -> RTSP 소스 (source가 RTSP 또는 RTSPS URL일 때)
+
+  # 스트림을 가져올 때 사용할 전송 프로토콜입니다. 사용 가능한 값: "automatic", "udp", "multicast", "tcp".
+  rtspTransport: automatic
+  # 서버 포트를 제공하지 않거나 임의의 서버 포트를 사용하는 소스를 지원합니다.
+  # 이는 보안 문제가 있으므로 이를 필요로 하는 소스와 상호 작용할 때만 사용해야 합니다.
+  rtspAnyPort: no
+  # 지정된 오프셋부터 스트리밍을 시작하기 위해 소스에 보낼 Range 헤더입니다.
+  # 사용 가능한 값:
+  # * clock: 절대 시간
+  # * npt: 일반 재생 시간 (Normal Play Time)
+  # * smpte: 녹화 시작을 기준으로 한 SMPTE 타임스탬프
+  rtspRangeType:
+  # 사용 가능한 값:
+  # * clock: UTC ISO 8601 결합 날짜 및 시간 문자열, 예: 20230812T120000Z
+  # * npt: "300ms", "1.5m", "2h45m"과 같은 지속 시간. 유효 단위: "ns", "us", "ms", "s", "m", "h"
+  # * smpte: "300ms", "1.5m", "2h45m"과 같은 지속 시간. 유효 단위: "ns", "us", "ms", "s", "m", "h"
+  rtspRangeStart:
+
+  ###############################################
+  # 기본 경로 설정 -> RTP 소스 (source가 RTP일 때)
+
+  # RTP 스트림의 세션 설명 프로토콜(SDP)입니다.
+  rtpSDP:
+
+  ###############################################
+  # 기본 경로 설정 -> 리다이렉트 소스 (source가 "redirect"일 때)
+
+  # 클라이언트가 리다이렉트될 경로입니다.
+  # 상대 경로(예: /otherstream) 또는 절대 RTSP URL일 수 있습니다.
+  sourceRedirect:
+
+  ###############################################
+  # 기본 경로 설정 -> Raspberry Pi 카메라 소스 (source가 "rpiCamera"일 때)
+
+  # 카메라 ID입니다.
+  rpiCameraCamID: 0
+  # 보조 스트림인지 여부입니다.
+  rpiCameraSecondary: false
+  # 프레임 너비입니다.
+  rpiCameraWidth: 1920
+  # 프레임 높이입니다.
+  rpiCameraHeight: 1080
+  # 수평 뒤집기 (좌우 반전).
+  rpiCameraHFlip: false
+  # 수직 뒤집기 (상하 반전).
+  rpiCameraVFlip: false
+  # 밝기 [-1, 1].
+  rpiCameraBrightness: 0
+  # 대비 [0, 16].
+  rpiCameraContrast: 1
+  # 채도 [0, 16].
+  rpiCameraSaturation: 1
+  # 선명도 [0, 16].
+  rpiCameraSharpness: 1
+  # 노출 모드.
+  # 값: normal, short, long, custom.
+  rpiCameraExposure: normal
+  # 자동 화이트 밸런스 모드.
+  # (auto, incandescent, tungsten, fluorescent, indoor, daylight, cloudy or custom).
+  rpiCameraAWB: auto
+  # 자동 화이트 밸런스 고정 게인. rpiCameraAWB 대신 사용할 수 있습니다.
+  # 형식: [red,blue].
+  rpiCameraAWBGains: [0, 0]
+  # 노이즈 제거 작동 모드 (off, cdn_off, cdn_fast, cdn_hq).
+  rpiCameraDenoise: "off"
+  # 고정 셔터 속도 (마이크로초).
+  rpiCameraShutter: 0
+  # AEC/AGC 알고리즘의 측광 모드 (centre, spot, matrix or custom).
+  rpiCameraMetering: centre
+  # 고정 게인.
+  rpiCameraGain: 0
+  # 이미지의 EV 보정, 범위 [-10, 10].
+  rpiCameraEV: 0
+  # 관심 영역 (Region of interest), x,y,width,height 형식 (모두 0과 1 사이로 정규화됨).
+  rpiCameraROI:
+  # Raspberry Camera 3에서 HDR 활성화 여부.
+  rpiCameraHDR: false
+  # 튜닝 파일.
+  rpiCameraTuningFile:
+  # 센서 모드, 형식 [width]:[height]:[bit-depth]:[packing]
+  # 비트 깊이(bit-depth)와 패킹(packing)은 선택 사항입니다.
+  rpiCameraMode:
+  # 초당 프레임 수 (FPS).
+  rpiCameraFPS: 30
+  # 자동 초점 모드 (auto, manual or continuous).
+  rpiCameraAfMode: continuous
+  # 자동 초점 범위 (normal, macro or full).
+  rpiCameraAfRange: normal
+  # 자동 초점 속도 (normal or fast).
+  rpiCameraAfSpeed: normal
+  # 렌즈 위치 (수동 초점 전용), 렌즈를 특정 거리로 초점을 맞추도록 설정합니다.
+  # 계산 공식: d = 1 / value
+  # 예시: 0은 렌즈를 무한대로 이동.
+  #       0.5는 렌즈를 2m 거리의 물체에 초점.
+  #       2는 렌즈를 50cm 거리의 물체에 초점.
+  rpiCameraLensPosition: 0.0
+  # 자동 초점 창, x,y,width,height 형식. 좌표는 전체 이미지의 비율로 주어집니다.
+  rpiCameraAfWindow:
+  # 수동 플리커 보정 주기 (마이크로초).
+  rpiCameraFlickerPeriod: 0
+  # 각 프레임에 텍스트 인쇄 활성화.
+  rpiCameraTextOverlayEnable: false
+  # 각 프레임에 인쇄될 텍스트.
+  # 형식은 strftime() 함수 형식을 따릅니다.
+  rpiCameraTextOverlay: '%Y-%m-%d %H:%M:%S - MediaMTX'
+  # 코덱 (auto, hardwareH264, softwareH264 or mjpeg).
+  # "auto"이고 기본 스트림인 경우 hardwareH264(가능한 경우) 또는 softwareH264로 설정됩니다.
+  # "auto"이고 보조 스트림인 경우 mjpeg로 설정됩니다.
+  rpiCameraCodec: auto
+  # IDR 프레임 간 주기 (코덱이 hardwareH264 또는 softwareH264인 경우).
+  rpiCameraIDRPeriod: 60
+  # 비트레이트 (코덱이 hardwareH264 또는 softwareH264인 경우).
+  rpiCameraBitrate: 5000000
+  # 하드웨어 H264 프로파일 (baseline, main or high) (코덱이 hardwareH264인 경우).
+  rpiCameraHardwareH264Profile: main
+  # 하드웨어 H264 레벨 (4.0, 4.1 or 4.2) (코덱이 hardwareH264인 경우).
+  rpiCameraHardwareH264Level: '4.1'
+  # 소프트웨어 H264 프로파일 (baseline, main or high) (코덱이 softwareH264인 경우).
+  rpiCameraSoftwareH264Profile: baseline
+  # 소프트웨어 H264 레벨 (4.0, 4.1 or 4.2) (코덱이 softwareH264인 경우).
+  rpiCameraSoftwareH264Level: '4.1'
+  # M-JPEG JPEG 품질 (코덱이 mjpeg인 경우).
+  rpiCameraMJPEGQuality: 60
+
+  ###############################################
+  # 기본 경로 설정 -> 훅 (Hooks)
+
+  # 이 경로가 초기화될 때 실행할 명령어입니다.
+  # 서버가 시작될 때 스트림을 게시하는 데 사용할 수 있습니다.
+  # 프로그램이 종료되면 SIGINT 신호로 종료됩니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnInit:
+  # 명령어가 종료될 경우 다시 시작할지 여부입니다.
+  runOnInitRestart: no
+
+  # 리더(Reader)가 이 경로를 요청했을 때 게시(Publish) 중인 사람이 없을 경우 실행할 명령어입니다.
+  # 온디맨드(On-demand)로 스트림을 게시하는 데 사용할 수 있습니다.
+  # 리더가 더 이상 없으면 SIGINT 신호로 종료됩니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * MTX_QUERY: 쿼리 파라미터 (첫 번째 리더가 전달)
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnDemand:
+  # 명령어가 종료될 경우 다시 시작할지 여부입니다.
+  runOnDemandRestart: no
+  # 리더는 runOnDemand 명령어가 게시를 시작하거나 이 시간이 지날 때까지 대기 상태가 됩니다.
+  runOnDemandStartTimeout: 10s
+  # 연결된 리더가 없고 이 시간이 지나면 명령어가 종료됩니다.
+  runOnDemandCloseAfter: 10s
+  # 리더가 더 이상 없을 때 실행할 명령어입니다.
+  # 환경 변수는 runOnDemand와 동일합니다.
+  runOnUnDemand:
+
+  # 클라이언트에 의해 게시되거나 서버/카메라에서 가져와서 스트림이 읽기 준비가 되었을 때 실행할 명령어입니다.
+  # 스트림이 더 이상 준비되지 않게 되면 SIGINT 신호로 종료됩니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * MTX_QUERY: 쿼리 파라미터 (게시자가 전달)
+  # * MTX_SOURCE_TYPE: 소스 유형
+  # * MTX_SOURCE_ID: 소스 ID
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnReady:
+  # 명령어가 종료될 경우 다시 시작할지 여부입니다.
+  runOnReadyRestart: no
+  # 스트림을 더 이상 사용할 수 없을 때 실행할 명령어입니다.
+  # 환경 변수는 runOnReady와 동일합니다.
+  runOnNotReady:
+
+  # 클라이언트가 읽기를 시작할 때 실행할 명령어입니다.
+  # 클라이언트가 읽기를 중단하면 SIGINT 신호로 종료됩니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * MTX_QUERY: 쿼리 파라미터 (리더가 전달)
+  # * MTX_READER_TYPE: 리더 유형
+  # * MTX_READER_ID: 리더 ID
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnRead:
+  # 명령어가 종료될 경우 다시 시작할지 여부입니다.
+  runOnReadRestart: no
+  # 클라이언트가 읽기를 중단할 때 실행할 명령어입니다.
+  # 환경 변수는 runOnRead와 동일합니다.
+  runOnUnread:
+
+  # 녹화 세그먼트가 생성될 때 실행할 명령어입니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * MTX_SEGMENT_PATH: 세그먼트 파일 경로
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnRecordSegmentCreate:
+
+  # 녹화 세그먼트가 완료될 때 실행할 명령어입니다.
+  # 다음 환경 변수를 사용할 수 있습니다:
+  # * MTX_PATH: 경로 이름
+  # * MTX_SEGMENT_PATH: 세그먼트 파일 경로
+  # * MTX_SEGMENT_DURATION: 세그먼트 지속 시간
+  # * RTSP_PORT: RTSP 서버 포트
+  # * G1, G2, ...: 경로 이름이 정규 표현식인 경우 정규 표현식 그룹.
+  runOnRecordSegmentComplete:
+
+###############################################
+# 경로 설정 (Path settings)
+
+# "paths"의 설정은 특정 경로에 적용되며, 맵 키(Map Key)는 경로의 이름입니다.
+# "pathDefaults"의 모든 설정은 여기서 재정의할 수 있습니다.
+# 물결표(~)를 접두사로 사용하여 정규 표현식을 사용할 수 있습니다.
+# 예를 들어 "~^(test1|test2)$"는 "test1"과 "test2" 모두 일치하고,
+# "~^prefix"는 "prefix"로 시작하는 모든 경로와 일치합니다.
+paths:
+  # 예시:
+  # my_camera:
+  #   source: rtsp://my_camera
+
+  # "all_others" 아래의 설정은 다른 항목과 일치하지 않는
+  # 모든 경로에 적용됩니다.
+  all_others:

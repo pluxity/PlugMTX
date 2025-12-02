@@ -1,0 +1,68 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+mediamtx
+mediamtx.exe
+*.exe
+*.dll
+*.so
+*.dylib
+binaries/
+tmp/
+
+# Test files
+*_test.go
+test/
+internal/teste2e/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Recordings
+recordings/
+*.mp4
+*.ts
+*.m3u8
+
+# Node modules
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage
+coverage/
+*.out
+
+# Scripts
+test_ptz.py
+test_ptz.sh
+*.sh
+
+# Docker files
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
