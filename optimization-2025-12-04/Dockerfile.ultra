@@ -1,0 +1,25 @@
+FROM alpine:3.19
+
+LABEL version="ultra-optimized-2025-12-04"
+LABEL description="MediaMTX ultra optimization: GOGC=300, GCM-only (no SHA1), all previous optimizations. Expected: CPU <24%"
+
+# Copy optimized binary
+COPY mediamtx_ultra_optimized /app/mediamtx
+
+# Copy configuration
+COPY mediamtx.yml /app/mediamtx.yml
+
+WORKDIR /app
+
+# Expose ports
+# 8119: API
+# 8120: HLS
+# 8121: RTSP
+# 8117: WebRTC
+# 8118: WebRTC UDP
+# 9999: pprof
+# 1935: RTMP
+# 8890: SRT UDP
+EXPOSE 8119 8120 8121 8117 8118/udp 9999 1935 8890/udp
+
+CMD ["/app/mediamtx"]

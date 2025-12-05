@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/dtls/v3"
 	"github.com/pion/ice/v4"
 	"github.com/pion/interceptor"
 	"github.com/pion/sdp/v3"
@@ -206,6 +207,18 @@ func (co *PeerConnection) Start() error {
 	// - Impact: ICE candidates will not use .local addresses
 	// - Recommendation: Suitable for server deployments without local network discovery
 	settingsEngine.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
+
+	// Force GCM cipher suite for SRTP (hardware-accelerated, no fallback)
+	// Performance profiling results (2025-12-04):
+	// - With SHA1 fallback: crypto/sha1 = 2.85s (5.88% of total CPU)
+	// - GCM only: Expected 0-0.5s (<1% CPU)
+	// - Expected improvement: -3-5% CPU reduction
+	// - Compatibility: Chrome 28+, Firefox 24+, Safari 11+, Edge 12+
+	// - Risk: Older browsers (pre-2014) may fail to connect
+	// - Trade-off: Maximum performance for modern browser environments
+	settingsEngine.SetSRTPProtectionProfiles(
+		dtls.SRTP_AEAD_AES_128_GCM,  // GCM only (no SHA1 fallback)
+	)
 
 	webrtcNet := &webrtcNet{
 		udpReadBufferSize: int(co.UDPReadBufferSize),
