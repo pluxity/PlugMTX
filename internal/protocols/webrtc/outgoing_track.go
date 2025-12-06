@@ -57,12 +57,9 @@ func (t *OutgoingTrack) setup(p *PeerConnection) error {
 
 	t.ssrc = uint32(sender.GetParameters().Encodings[0].SSRC)
 
-	// RTCP sender interval optimized for performance
-	// Changed from 1s to 3s to reduce CPU overhead
-	// Performance impact: -3~5% CPU, no quality degradation
 	t.rtcpSender = &rtpsender.Sender{
 		ClockRate: int(t.track.Codec().ClockRate),
-		Period:    3 * time.Second,
+		Period:    1 * time.Second,
 		TimeNow:   time.Now,
 		WritePacketRTCP: func(pkt rtcp.Packet) {
 			p.wr.WriteRTCP([]rtcp.Packet{pkt}) //nolint:errcheck

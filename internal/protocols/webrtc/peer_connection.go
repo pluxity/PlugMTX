@@ -24,10 +24,31 @@ import (
 )
 
 const (
-	webrtcStreamID = "mediamtx"
+	webrtcStreamID       = "mediamtx"
+	interfaceIPsCacheTTL = 30 * time.Second
+)
+
+// interfaceIPs cache to avoid repeated system calls
+var (
+	interfaceIPsCache      = make(map[string][]string)
+	interfaceIPsCacheTime  time.Time
+	interfaceIPsCacheMutex sync.RWMutex
 )
 
 func interfaceIPs(interfaceList []string) ([]string, error) {
+	cacheKey := strings.Join(interfaceList, ",")
+
+	// Check cache first
+	interfaceIPsCacheMutex.RLock()
+	if time.Since(interfaceIPsCacheTime) < interfaceIPsCacheTTL {
+		if cached, ok := interfaceIPsCache[cacheKey]; ok {
+			interfaceIPsCacheMutex.RUnlock()
+			return cached, nil
+		}
+	}
+	interfaceIPsCacheMutex.RUnlock()
+
+	// Cache miss or expired, fetch new data
 	intfs, err := net.Interfaces()
 	if err != nil {
 		return nil, err
@@ -58,29 +79,28 @@ func interfaceIPs(interfaceList []string) ([]string, error) {
 		}
 	}
 
+	// Update cache
+	interfaceIPsCacheMutex.Lock()
+	interfaceIPsCache[cacheKey] = ips
+	interfaceIPsCacheTime = time.Now()
+	interfaceIPsCacheMutex.Unlock()
+
 	return ips, nil
 }
 
 // * skip ConfigureRTCPReports
 // * add statsInterceptor
-// * NACK disabled for performance optimization
 func registerInterceptors(
 	mediaEngine *webrtc.MediaEngine,
 	interceptorRegistry *interceptor.Registry,
 	onStatsInterceptor func(s *statsInterceptor),
 ) error {
-	// NACK (Negative Acknowledgement) interceptor disabled for performance optimization
-	// Performance profiling results (2025-12-04):
-	// - Memory overhead: 91.63 MB (72% of total heap)
-	// - CPU overhead: 20-30% in RTP write path
-	// - Impact: Packet retransmission on loss will not be available
-	// - Recommendation: Suitable for stable network environments (LAN)
-	// err := webrtc.ConfigureNack(mediaEngine, interceptorRegistry)
-	// if err != nil {
-	// 	return err
-	// }
+	err := webrtc.ConfigureNack(mediaEngine, interceptorRegistry)
+	if err != nil {
+		return err
+	}
 
-	err := webrtc.ConfigureSimulcastExtensionHeaders(mediaEngine)
+	err = webrtc.ConfigureSimulcastExtensionHeaders(mediaEngine)
 	if err != nil {
 		return err
 	}
@@ -200,14 +220,6 @@ func (co *PeerConnection) Start() error {
 
 	settingsEngine.SetSTUNGatherTimeout(time.Duration(co.STUNGatherTimeout))
 
-	// Disable mDNS for performance optimization
-	// Performance profiling results (2025-12-04):
-	// - mDNS CPU usage: 4.26s (18.93% of total CPU)
-	// - Expected improvement: 15-20% CPU reduction
-	// - Impact: ICE candidates will not use .local addresses
-	// - Recommendation: Suitable for server deployments without local network discovery
-	settingsEngine.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
-
 	// Force GCM cipher suite for SRTP (hardware-accelerated, no fallback)
 	// Performance profiling results (2025-12-04):
 	// - With SHA1 fallback: crypto/sha1 = 2.85s (5.88% of total CPU)
@@ -217,7 +229,7 @@ func (co *PeerConnection) Start() error {
 	// - Risk: Older browsers (pre-2014) may fail to connect
 	// - Trade-off: Maximum performance for modern browser environments
 	settingsEngine.SetSRTPProtectionProfiles(
-		dtls.SRTP_AEAD_AES_128_GCM,  // GCM only (no SHA1 fallback)
+		dtls.SRTP_AEAD_AES_128_GCM, // GCM only (no SHA1 fallback)
 	)
 
 	webrtcNet := &webrtcNet{

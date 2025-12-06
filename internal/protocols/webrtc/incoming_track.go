@@ -290,12 +290,10 @@ func (t *IncomingTrack) start() {
 	}
 	t.packetsLost.Start()
 
-	// RTCP receiver interval optimized for performance
-	// Changed from 1s to 3s to reduce CPU overhead
 	t.rtpReceiver = &rtpreceiver.Receiver{
 		ClockRate:            int(t.track.Codec().ClockRate),
 		UnrealiableTransport: true,
-		Period:               3 * time.Second,
+		Period:               1 * time.Second,
 		WritePacketRTCP: func(p rtcp.Packet) {
 			t.writeRTCP([]rtcp.Packet{p}) //nolint:errcheck
 		},
