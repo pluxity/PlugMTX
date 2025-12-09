@@ -316,6 +316,7 @@ func (a *API) Initialize() error {
 	{
 		ptzGroup.GET("/cameras", a.onPTZList)
 		ptzGroup.POST("/:camera/move", a.onPTZMove)
+		ptzGroup.POST("/:camera/move/relative", a.onPTZRelativeMove)
 		ptzGroup.POST("/:camera/stop", a.onPTZStop)
 		ptzGroup.POST("/:camera/focus", a.onPTZFocus)
 		ptzGroup.GET("/:camera/focus", a.onPTZGetFocus)
@@ -1407,6 +1408,51 @@ func (a *API) onPTZMove(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, PTZResponse{
 		Success: true,
 		Message: "PTZ move command sent successfully",
+	})
+}
+
+func (a *API) onPTZRelativeMove(ctx *gin.Context) {
+	cameraName := ctx.Param("camera")
+
+	config, exists := a.getPTZConfig(cameraName)
+	if !exists {
+		ctx.JSON(http.StatusNotFound, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("PTZ not configured for camera: %s", cameraName),
+		})
+		return
+	}
+
+	var req PTZMoveRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Invalid request: %v", err),
+		})
+		return
+	}
+
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
+
+	err = ptzController.RelativeMove(req.Pan, req.Tilt, req.Zoom)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("PTZ relative move failed: %v", err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, PTZResponse{
+		Success: true,
+		Message: "PTZ relative move command sent successfully",
 	})
 }
 

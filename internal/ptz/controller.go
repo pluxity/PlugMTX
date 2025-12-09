@@ -6,11 +6,17 @@ type Controller interface {
 	// Connect PTZ 카메라와 연결 수립
 	Connect() error
 
-	// Move 팬, 틸트, 줌 제어
-	// pan: -100 ~ 100 (좌측에서 우측)
-	// tilt: -100 ~ 100 (아래에서 위)
-	// zoom: -100 ~ 100 (줌 아웃에서 줌 인)
+	// Move 연속 PTZ 이동 수행 (ContinuousMove)
+	// pan: -100 ~ 100 (좌측에서 우측, 속도)
+	// tilt: -100 ~ 100 (아래에서 위, 속도)
+	// zoom: -100 ~ 100 (줌 아웃에서 줌 인, 속도)
 	Move(pan, tilt, zoom int) error
+
+	// RelativeMove 상대적 PTZ 이동 수행 (일정 거리 이동 후 자동 정지)
+	// pan: -100 ~ 100 (좌측에서 우측, 거리/각도)
+	// tilt: -100 ~ 100 (아래에서 위, 거리/각도)
+	// zoom: -100 ~ 100 (줌 아웃에서 줌 인, 거리)
+	RelativeMove(pan, tilt, zoom int) error
 
 	// Stop 모든 PTZ 움직임 정지
 	Stop() error

@@ -96,12 +96,28 @@ func (h *HikvisionPTZ) getHostPort() string {
 	return h.Host
 }
 
-// Move 순간 PTZ 이동 수행 (Momentary - 상대적 이동)
-// pan: -100 ~ 100 (음수=좌, 양수=우, 0=정지)
-// tilt: -100 ~ 100 (음수=아래, 양수=위, 0=정지)
-// zoom: -100 ~ 100 (음수=줌 아웃, 양수=줌 인, 0=정지)
-// momentary 방식은 지정한 거리만큼 상대적으로 이동 후 자동 정지
+// Move 연속 PTZ 이동 수행 (Continuous)
+// pan: -100 ~ 100 (음수=좌, 양수=우, 0=정지, 속도)
+// tilt: -100 ~ 100 (음수=아래, 양수=위, 0=정지, 속도)
+// zoom: -100 ~ 100 (음수=줌 아웃, 양수=줌 인, 0=정지, 속도)
+// continuous 방식은 정지 명령을 받을 때까지 계속 이동
 func (h *HikvisionPTZ) Move(pan, tilt, zoom int) error {
+	xmlData := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<PTZData>
+    <pan>%d</pan>
+    <tilt>%d</tilt>
+    <zoom>%d</zoom>
+</PTZData>`, pan, tilt, zoom)
+
+	url := fmt.Sprintf("http://%s/ISAPI/PTZCtrl/channels/1/continuous", h.getHostPort())
+	return h.sendRequest("PUT", url, xmlData)
+}
+
+// RelativeMove 상대적 PTZ 이동 수행 (Momentary - 일정 거리 이동 후 자동 정지)
+// pan: -100 ~ 100 (음수=좌, 양수=우, 거리)
+// tilt: -100 ~ 100 (음수=아래, 양수=위, 거리)
+// zoom: -100 ~ 100 (음수=줌 아웃, 양수=줌 인, 거리)
+func (h *HikvisionPTZ) RelativeMove(pan, tilt, zoom int) error {
 	xmlData := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <PTZData>
     <pan>%d</pan>

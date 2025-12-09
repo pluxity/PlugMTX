@@ -23,7 +23,7 @@ $ImageTarFile = "mediamtx.tar"
 
 # Remote Server Path and File Information
 $RemotePath = "/home/pluxity/docker/media-server"
-$RemoteComposeFile = "docker-compose.mediamtx.yml"
+$RemoteComposeFile = "docker-compose.yml"
 $RemoteConfigFile = "mediamtx.yml"
 
 # =======================================================
@@ -93,21 +93,21 @@ try {
     # Define the commands to be executed on the remote server.
     $RemoteCommands = "cd $RemotePath; " +
                       "echo '→ Stopping existing container...'; " +
-                      "docker compose -f $RemoteComposeFile down; " +
+                      "docker compose down; " +
                       "echo '→ Loading new image...'; " +
                       "docker load -i $ImageTarFile; " +
                       "echo '→ Starting new container...'; " +
-                      "docker compose -f $RemoteComposeFile up -d; " +
+                      "docker compose up -d; " +
                       "echo '→ Cleaning up tar file...'; " +
                       "rm -f $ImageTarFile; " +
                       "echo ''; " +
                       "echo '✓ Deployment completed!'; " +
                       "echo ''; " +
                       "echo 'Container status:'; " +
-                      "docker compose -f $RemoteComposeFile ps; " +
+                      "docker compose ps; " +
                       "echo ''; " +
                       "echo 'Following logs (Ctrl+C to exit):'; " +
-                      "docker compose -f $RemoteComposeFile logs -f"
+                      "docker compose logs -f"
 
     # Execute the remote commands via ssh.
     sshpass -p $RemotePassword ssh -t ($RemoteUser + "@" + $RemoteHost) $RemoteCommands

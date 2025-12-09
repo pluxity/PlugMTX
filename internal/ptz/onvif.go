@@ -97,8 +97,6 @@ func (o *OnvifPTZ) Connect() error {
 	// Use the first profile
 	o.profileToken = xsd_onvif.ReferenceToken(envelope.Body.GetProfilesResponse.Profiles[0].Token)
 
-	fmt.Printf("[ONVIF] Connected to %s:%d, using profile token: %s\n", o.Host, o.Port, o.profileToken)
-
 	return nil
 }
 
@@ -116,7 +114,6 @@ func (o *OnvifPTZ) ensureConnected() error {
 // zoom: -100 ~ 100 (음수=줌 아웃, 양수=줌 인, 0=정지)
 func (o *OnvifPTZ) Move(pan, tilt, zoom int) error {
 	if err := o.ensureConnected(); err != nil {
-		fmt.Printf("[ONVIF PTZ] ensureConnected failed: %v\n", err)
 		return err
 	}
 
@@ -125,8 +122,8 @@ func (o *OnvifPTZ) Move(pan, tilt, zoom int) error {
 	tiltVelocity := float64(tilt) / 100.0
 	zoomVelocity := float64(zoom) / 100.0
 
-	fmt.Printf("[ONVIF PTZ] Sending ContinuousMove: profileToken=%s, pan=%.2f, tilt=%.2f, zoom=%.2f\n",
-		o.profileToken, panVelocity, tiltVelocity, zoomVelocity)
+	// Timeout is REQUIRED for ContinuousMove
+	timeout := xsd.Duration("PT60S")
 
 	req := onvif_ptz.ContinuousMove{
 		ProfileToken: o.profileToken,
@@ -139,17 +136,69 @@ func (o *OnvifPTZ) Move(pan, tilt, zoom int) error {
 				X: zoomVelocity,
 			},
 		},
+		Timeout: timeout,
 	}
 
 	resp, err := o.device.CallMethod(req)
 	if err != nil {
-		fmt.Printf("[ONVIF PTZ] ContinuousMove failed: %v\n", err)
 		return err
 	}
 
 	if resp != nil {
 		defer resp.Body.Close()
-		fmt.Printf("[ONVIF PTZ] ContinuousMove response status: %s\n", resp.Status)
+		if resp.StatusCode != 200 {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("ContinuousMove failed with status %d: %s", resp.StatusCode, string(body))
+		}
+	}
+
+	return nil
+}
+
+// RelativeMove 상대적 PTZ 이동 수행 (일정 거리 이동 후 자동 정지)
+// pan: -100 ~ 100 (음수=좌, 양수=우)
+// tilt: -100 ~ 100 (음수=아래, 양수=위)
+// zoom: -100 ~ 100 (음수=줌 아웃, 양수=줌 인)
+func (o *OnvifPTZ) RelativeMove(pan, tilt, zoom int) error {
+	if err := o.ensureConnected(); err != nil {
+		return err
+	}
+
+	// Convert -100~100 to -1.0~1.0 for translation
+	panTranslation := float64(pan) / 100.0
+	tiltTranslation := float64(tilt) / 100.0
+	zoomTranslation := float64(zoom) / 100.0
+
+	// Space URIs are REQUIRED for RelativeMove to work
+	panTiltSpace := xsd.AnyURI("http://www.onvif.org/ver10/tptz/PanTiltSpaces/TranslationGenericSpace")
+	zoomSpace := xsd.AnyURI("http://www.onvif.org/ver10/tptz/ZoomSpaces/TranslationGenericSpace")
+
+	req := onvif_ptz.RelativeMove{
+		ProfileToken: o.profileToken,
+		Translation: xsd_onvif.PTZVector{
+			PanTilt: xsd_onvif.Vector2D{
+				X:     panTranslation,
+				Y:     tiltTranslation,
+				Space: panTiltSpace,
+			},
+			Zoom: xsd_onvif.Vector1D{
+				X:     zoomTranslation,
+				Space: zoomSpace,
+			},
+		},
+	}
+
+	resp, err := o.device.CallMethod(req)
+	if err != nil {
+		return err
+	}
+
+	if resp != nil {
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("RelativeMove failed with status %d: %s", resp.StatusCode, string(body))
+		}
 	}
 
 	return nil
@@ -167,8 +216,16 @@ func (o *OnvifPTZ) Stop() error {
 		Zoom:         xsd.Boolean(true),
 	}
 
-	_, err := o.device.CallMethod(req)
-	return err
+	resp, err := o.device.CallMethod(req)
+	if err != nil {
+		return err
+	}
+
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
+	return nil
 }
 
 // Focus 연속 포커스 조정 수행
