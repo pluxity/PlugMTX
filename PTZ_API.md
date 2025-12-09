@@ -41,9 +41,9 @@ curl http://localhost:9997/v3/ptz/cameras
 
 ---
 
-### 2. PTZ 이동 제어
+### 2. PTZ 이동 제어 (Continuous)
 
-카메라의 Pan, Tilt, Zoom을 연속적으로 제어합니다.
+카메라의 Pan, Tilt, Zoom을 연속적으로 제어합니다. 속도 기반으로 동작하며, Stop 명령이 있을 때까지 계속 이동합니다.
 
 **Endpoint:** `POST /:camera/move`
 
@@ -70,13 +70,48 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/move \
 ```json
 {
   "success": true,
-  "message": "PTZ move command sent successfully"
+  "message": "Continuous move command sent successfully"
 }
 ```
 
 ---
 
-### 3. PTZ 이동 정지
+### 3. PTZ 상대 이동 (Relative)
+
+현재 위치에서 상대적인 거리만큼 이동합니다. 목표 위치에 도달하면 자동으로 정지합니다.
+
+**Endpoint:** `POST /:camera/move/relative`
+
+**요청 파라미터:**
+
+| 파라미터 | 타입 | 범위 | 설명 |
+|---------|------|------|------|
+| pan | int | -100 ~ 100 | 좌우 상대 이동 (음수: 왼쪽, 양수: 오른쪽, 0: 없음) |
+| tilt | int | -100 ~ 100 | 상하 상대 이동 (음수: 아래, 양수: 위, 0: 없음) |
+| zoom | int | -100 ~ 100 | 줌 상대 이동 (음수: 줌 아웃, 양수: 줌 인, 0: 없음) |
+
+**요청 예시:**
+```bash
+curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/move/relative \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pan": 50,
+    "tilt": 0,
+    "zoom": 0
+  }'
+```
+
+**응답 예시:**
+```json
+{
+  "success": true,
+  "message": "Relative move command sent successfully"
+}
+```
+
+---
+
+### 4. PTZ 이동 정지
 
 현재 진행 중인 모든 PTZ 이동을 즉시 정지합니다.
 
@@ -97,7 +132,7 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/stop
 
 ---
 
-### 4. PTZ 상태 조회
+### 5. PTZ 상태 조회
 
 현재 카메라의 PTZ 위치 상태를 조회합니다.
 
@@ -134,7 +169,7 @@ curl http://localhost:9997/v3/ptz/CCTV-TEST-001/status
 
 ## 포커스 제어
 
-### 5. 포커스 조정
+### 6. 포커스 조정
 
 카메라의 포커스를 조정합니다.
 
@@ -161,7 +196,13 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/focus \
 }
 ```
 
-### 6. 포커스 상태 조회
+**프로토콜 지원**:
+- ✅ Hikvision ISAPI: 완전 지원
+- ✅ ONVIF: PTZ Zoom 채널 사용하여 지원
+
+---
+
+### 7. 포커스 상태 조회
 
 현재 카메라의 포커스 설정을 조회합니다.
 
@@ -194,7 +235,7 @@ curl http://localhost:9997/v3/ptz/CCTV-TEST-001/focus
 
 ## 조리개(Iris) 제어
 
-### 7. 조리개 조정
+### 8. 조리개 조정
 
 카메라의 조리개(Iris)를 조정합니다.
 
@@ -213,7 +254,7 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/iris \
   -d '{"speed": 30}'
 ```
 
-**응답 예시:**
+**응답 예시 (성공):**
 ```json
 {
   "success": true,
@@ -221,7 +262,22 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/iris \
 }
 ```
 
-### 8. 조리개 상태 조회
+**응답 예시 (ONVIF 미지원):**
+```json
+{
+  "success": false,
+  "error": "iris control not supported via ONVIF on this camera (use Hikvision ISAPI if available)"
+}
+```
+
+**프로토콜 지원**:
+- ✅ Hikvision ISAPI: 완전 지원
+- ❌ ONVIF: 대부분 카메라에서 미지원
+- 상세 정보: [docs/FOCUS_IRIS.md](docs/FOCUS_IRIS.md), [docs/ONVIF_IRIS_TEST_RESULT.md](docs/ONVIF_IRIS_TEST_RESULT.md)
+
+---
+
+### 9. 조리개 상태 조회
 
 현재 카메라의 조리개 설정을 조회합니다.
 
@@ -256,7 +312,7 @@ curl http://localhost:9997/v3/ptz/CCTV-TEST-001/iris
 
 ## 프리셋 관리
 
-### 9. 프리셋 목록 조회
+### 10. 프리셋 목록 조회
 
 저장된 모든 PTZ 프리셋을 조회합니다.
 
@@ -309,11 +365,11 @@ curl http://localhost:9997/v3/ptz/CCTV-TEST-001/presets
 
 ---
 
-### 10. 프리셋으로 이동
+### 11. 프리셋으로 이동
 
 저장된 프리셋 위치로 카메라를 이동시킵니다.
 
-**Endpoint:** `POST /:camera/preset/:presetId`
+**Endpoint:** `POST /:camera/presets/:presetId`
 
 **URL 파라미터:**
 
@@ -323,7 +379,7 @@ curl http://localhost:9997/v3/ptz/CCTV-TEST-001/presets
 
 **요청 예시:**
 ```bash
-curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1
+curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/presets/1
 ```
 
 **응답 예시:**
@@ -336,11 +392,11 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1
 
 ---
 
-### 11. 프리셋 생성/수정
+### 12. 프리셋 생성/수정
 
 현재 PTZ 위치를 프리셋으로 저장합니다.
 
-**Endpoint:** `PUT /:camera/preset/:presetId`
+**Endpoint:** `PUT /:camera/presets/:presetId`
 
 **URL 파라미터:**
 
@@ -356,7 +412,7 @@ curl -X POST http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1
 
 **요청 예시:**
 ```bash
-curl -X PUT http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1 \
+curl -X PUT http://localhost:9997/v3/ptz/CCTV-TEST-001/presets/1 \
   -H "Content-Type: application/json" \
   -d '{"name": "Main Entrance"}'
 ```
@@ -381,11 +437,11 @@ curl -X PUT http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1 \
 
 ---
 
-### 12. 프리셋 삭제
+### 13. 프리셋 삭제
 
 저장된 프리셋을 삭제합니다.
 
-**Endpoint:** `DELETE /:camera/preset/:presetId`
+**Endpoint:** `DELETE /:camera/presets/:presetId`
 
 **URL 파라미터:**
 
@@ -395,7 +451,7 @@ curl -X PUT http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1 \
 
 **요청 예시:**
 ```bash
-curl -X DELETE http://localhost:9997/v3/ptz/CCTV-TEST-001/preset/1
+curl -X DELETE http://localhost:9997/v3/ptz/CCTV-TEST-001/presets/1
 ```
 
 **응답 예시:**
@@ -485,11 +541,11 @@ ONVIF 표준 프로토콜을 지원하는 모든 PTZ 카메라와 호환됩니�
 
 ### 구현된 기능
 
-- ✅ Pan/Tilt/Zoom 제어 (ContinuousMove)
-- ⚠️ 포커스 조정 (Imaging 서비스 필요 - 미구현)
-- ⚠️ 조리개 조정 (Imaging 서비스 필요 - 미구현)
+- ✅ Pan/Tilt/Zoom 제어 (ContinuousMove, RelativeMove)
+- ✅ 포커스 조정 (Hikvision ISAPI, ONVIF PTZ Zoom 채널)
+- ⚠️ 조리개 조정 (Hikvision ISAPI만 지원, ONVIF 미지원)
 - ✅ 프리셋 CRUD (생성, 조회, 이동, 삭제)
-- ✅ WS-Security 인증
+- ✅ Digest 인증 (Hikvision), WS-Security 인증 (ONVIF)
 - ✅ PTZ 상태 조회
 
 ---
@@ -506,7 +562,10 @@ ONVIF 표준 프로토콜을 지원하는 모든 PTZ 카메라와 호환됩니�
 
 5. **포트 설정**: `ptzPort`를 지정하지 않으면 기본 HTTP 포트(80)가 사용됩니다. ONVIF 서비스 엔드포인트는 `http://[host]:[port]/onvif/device_service`입니다.
 
-6. **Focus/Iris 제어**: 현재 Focus와 Iris 조정 기능은 ONVIF Imaging 서비스가 필요하여 "not yet implemented" 에러를 반환합니다. 향후 구현 예정입니다.
+6. **Focus/Iris 제어**:
+   - **Focus**: Hikvision ISAPI와 ONVIF 모두 지원. ONVIF는 PTZ ContinuousMove의 Zoom 채널을 사용합니다.
+   - **Iris**: Hikvision ISAPI만 지원. ONVIF는 Imaging 서비스 한계로 미지원.
+   - 상세 정보는 [docs/FOCUS_IRIS.md](docs/FOCUS_IRIS.md) 참고.
 
 ---
 

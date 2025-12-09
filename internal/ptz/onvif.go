@@ -7,7 +7,6 @@ import (
 
 	"github.com/use-go/onvif"
 	"github.com/use-go/onvif/device"
-	onvif_imaging "github.com/use-go/onvif/Imaging"
 	"github.com/use-go/onvif/media"
 	onvif_ptz "github.com/use-go/onvif/ptz"
 	"github.com/use-go/onvif/xsd"
@@ -16,13 +15,13 @@ import (
 
 // OnvifPTZ ONVIF 호환 카메라의 PTZ 제어 처리
 type OnvifPTZ struct {
-	Host              string
-	Port              int
-	Username          string
-	Password          string
-	device            *onvif.Device
-	profileToken      xsd_onvif.ReferenceToken
-	videoSourceToken  xsd_onvif.ReferenceToken
+	Host             string
+	Port             int
+	Username         string
+	Password         string
+	device           *onvif.Device
+	profileToken     xsd_onvif.ReferenceToken
+	videoSourceToken xsd_onvif.ReferenceToken
 }
 
 // NewOnvifPTZ creates a new ONVIF PTZ controller
@@ -263,7 +262,7 @@ func (o *OnvifPTZ) Focus(speed int) error {
 				Y: 0,
 			},
 			Zoom: xsd_onvif.Vector1D{
-				X: focusSpeed,  // Use Zoom channel for Focus control
+				X: focusSpeed, // Use Zoom channel for Focus control
 			},
 		},
 		Timeout: timeout,
