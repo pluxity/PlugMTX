@@ -560,12 +560,12 @@ input[type="range"]::-moz-range-thumb {
       <h3>Position Status</h3>
       <div id="positionStatus" class="status-display">
         <div class="status-row">
-          <span class="status-label">Pan (Azimuth):</span>
-          <span class="status-value" id="posAzimuth">-</span>
+          <span class="status-label">Pan:</span>
+          <span class="status-value" id="posPan">-</span>
         </div>
         <div class="status-row">
-          <span class="status-label">Tilt (Elevation):</span>
-          <span class="status-value" id="posElevation">-</span>
+          <span class="status-label">Tilt:</span>
+          <span class="status-value" id="posTilt">-</span>
         </div>
         <div class="status-row">
           <span class="status-label">Zoom:</span>
@@ -701,47 +701,26 @@ const getStatus = async (cameraName) => {
     const response = await fetch(`${ptzBaseURL}/${cameraName}/status`);
     const data = await response.json();
 
-    if (data.success && data.data && data.data.position) {
-      document.getElementById('posAzimuth').textContent = data.data.position.azimuth;
-      document.getElementById('posElevation').textContent = data.data.position.elevation;
-      document.getElementById('posZoom').textContent = data.data.position.zoom;
+    if (data.success && data.data) {
+      document.getElementById('posPan').textContent = data.data.pan ? data.data.pan.toFixed(2) : '-';
+      document.getElementById('posTilt').textContent = data.data.tilt ? data.data.tilt.toFixed(2) : '-';
+      document.getElementById('posZoom').textContent = data.data.zoom ? data.data.zoom.toFixed(2) : '-';
     }
   } catch (error) {
     console.error('Failed to get status:', error);
   }
 };
 
-// Get Focus Status
+// Get Focus Status - Disabled (Focus/Iris use POST-only endpoints for control)
 const getFocusStatus = async (cameraName) => {
-  try {
-    const response = await fetch(`${ptzBaseURL}/${cameraName}/focus`);
-    const data = await response.json();
-
-    if (data.success && data.data) {
-      document.getElementById('focusMode').textContent = data.data.focusStyle || '-';
-      document.getElementById('focusLimit').textContent = data.data.focusLimited || '-';
-      document.getElementById('focusStatus').style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Failed to get focus status:', error);
-  }
+  // Focus status retrieval not supported in current API
+  console.log('Focus status retrieval not available (control-only)');
 };
 
-// Get Iris Status
+// Get Iris Status - Disabled (Focus/Iris use POST-only endpoints for control)
 const getIrisStatus = async (cameraName) => {
-  try {
-    const response = await fetch(`${ptzBaseURL}/${cameraName}/iris`);
-    const data = await response.json();
-
-    if (data.success && data.data) {
-      document.getElementById('irisLevel').textContent = data.data.level || '-';
-      document.getElementById('irisRange').textContent =
-        `${data.data.minLimit || 0} - ${data.data.maxLimit || 100}`;
-      document.getElementById('irisStatus').style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Failed to get iris status:', error);
-  }
+  // Iris status retrieval not supported in current API
+  console.log('Iris status retrieval not available (control-only)');
 };
 
 // Load presets
@@ -759,8 +738,6 @@ const loadPresets = async (cameraName) => {
       }
 
       data.data.forEach(preset => {
-        if (!preset.enabled) return;
-
         const presetItem = document.createElement('div');
         presetItem.className = 'preset-item';
         presetItem.innerHTML = `
@@ -840,7 +817,7 @@ const irisControl = async (camera, speed) => {
 
 const gotoPreset = async (camera, presetId) => {
   try {
-    const response = await fetch(`${ptzBaseURL}/${camera}/preset/${presetId}`, {
+    const response = await fetch(`${ptzBaseURL}/${camera}/presets/${presetId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -859,7 +836,7 @@ const gotoPreset = async (camera, presetId) => {
 
 const savePreset = async (camera, presetId, presetName) => {
   try {
-    const response = await fetch(`${ptzBaseURL}/${camera}/preset/${presetId}`, {
+    const response = await fetch(`${ptzBaseURL}/${camera}/presets/${presetId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: presetName || `Preset${presetId}` })
@@ -884,7 +861,7 @@ const deletePreset = async (camera, presetId) => {
   if (!confirm(`Delete preset #${presetId}?`)) return;
 
   try {
-    const response = await fetch(`${ptzBaseURL}/${camera}/preset/${presetId}`, {
+    const response = await fetch(`${ptzBaseURL}/${camera}/presets/${presetId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -1008,31 +985,18 @@ savePresetBtn.addEventListener('click', () => {
 });
 
 // Initialize PTZ button controls
+// Using click events for RelativeMove (automatically stops after moving)
 document.querySelectorAll('.ptz-btn:not(.disabled), .control-btn').forEach(btn => {
   const action = btn.getAttribute('data-action');
   if (!action) return;
 
-  btn.addEventListener('mousedown', () => handlePTZAction(action));
-  btn.addEventListener('mouseup', () => {
-    if (action !== 'stop' && currentCamera) {
-      ptzStop(currentCamera);
-    }
-  });
-  btn.addEventListener('mouseleave', () => {
-    if (action !== 'stop' && currentCamera) {
-      ptzStop(currentCamera);
-    }
-  });
+  // Use click for relative move - simpler and more reliable
+  btn.addEventListener('click', () => handlePTZAction(action));
 
+  // Mobile touch support
   btn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     handlePTZAction(action);
-  });
-  btn.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    if (action !== 'stop' && currentCamera) {
-      ptzStop(currentCamera);
-    }
   });
 });
 

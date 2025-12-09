@@ -36,6 +36,7 @@ import (
 
 // PTZ related types
 type PTZConfig struct {
+	Protocol string `json:"protocol"` // 프로토콜: "onvif", "isapi", "hikvision"
 	Host     string `json:"host"`
 	PTZPort  int    `json:"ptzPort"`
 	Username string `json:"username"`
@@ -55,9 +56,9 @@ type PTZResponse struct {
 }
 
 type PathConfig struct {
-	Source  string `yaml:"source"`
-	PTZ     bool   `yaml:"ptz"`
-	PTZPort int    `yaml:"ptzPort"`
+	Source    string `yaml:"source"`
+	PTZ       bool   `yaml:"ptz"`       // PTZ enabled/disabled
+	PTZSource string `yaml:"ptzSource"` // PTZ URL: onvif://user:pass@host:port or hikvision://user:pass@host:port
 }
 
 type FullConfig struct {
@@ -81,6 +82,73 @@ func sortedKeys(paths map[string]*conf.Path) []string {
 	}
 	sort.Strings(ret)
 	return ret
+}
+
+// parsePTZURL PTZ URL을 파싱하여 프로토콜, 호스트, 포트, 사용자명, 비밀번호 추출
+// 지원되는 URL 형식:
+//   - ptz://user:pass@host:port (기본값: ONVIF)
+//   - onvif://user:pass@host:port (ONVIF 프로토콜)
+//   - isapi://user:pass@host:port (Hikvision ISAPI 프로토콜)
+//   - hikvision://user:pass@host:port (Hikvision ISAPI 프로토콜)
+func parsePTZURL(ptzURL string) (protocol string, host string, port int, username string, password string, err error) {
+	if ptzURL == "" {
+		return "", "", 0, "", "", fmt.Errorf("PTZ URL is empty")
+	}
+
+	// URL 프로토콜 추출
+	var restURL string
+	if strings.HasPrefix(ptzURL, "ptz://") {
+		protocol = "ptz"
+		restURL = strings.TrimPrefix(ptzURL, "ptz://")
+	} else if strings.HasPrefix(ptzURL, "onvif://") {
+		protocol = "onvif"
+		restURL = strings.TrimPrefix(ptzURL, "onvif://")
+	} else if strings.HasPrefix(ptzURL, "isapi://") {
+		protocol = "isapi"
+		restURL = strings.TrimPrefix(ptzURL, "isapi://")
+	} else if strings.HasPrefix(ptzURL, "hikvision://") {
+		protocol = "hikvision"
+		restURL = strings.TrimPrefix(ptzURL, "hikvision://")
+	} else {
+		return "", "", 0, "", "", fmt.Errorf("PTZ URL must start with ptz://, onvif://, isapi://, or hikvision://")
+	}
+
+	// 마지막 @를 찾아 userinfo와 host:port 분리
+	// 비밀번호에 @ 문자가 포함된 경우 처리
+	lastAtIndex := strings.LastIndex(restURL, "@")
+	if lastAtIndex == -1 {
+		return "", "", 0, "", "", fmt.Errorf("PTZ URL must contain @ separator")
+	}
+
+	userinfo := restURL[:lastAtIndex]
+	hostPort := restURL[lastAtIndex+1:]
+
+	// userinfo를 사용자명과 비밀번호로 분리
+	colonIndex := strings.Index(userinfo, ":")
+	if colonIndex != -1 {
+		username = userinfo[:colonIndex]
+		password = userinfo[colonIndex+1:]
+	} else {
+		username = userinfo
+	}
+
+	// host:port 파싱
+	parsed, parseErr := url.Parse("http://" + hostPort)
+	if parseErr != nil {
+		return "", "", 0, "", "", fmt.Errorf("invalid host:port in PTZ URL: %w", parseErr)
+	}
+
+	host = parsed.Hostname()
+	portStr := parsed.Port()
+	port = 80 // 기본 포트
+	if portStr != "" {
+		port, parseErr = strconv.Atoi(portStr)
+		if parseErr != nil {
+			return "", "", 0, "", "", fmt.Errorf("invalid port in PTZ URL: %w", parseErr)
+		}
+	}
+
+	return protocol, host, port, username, password, nil
 }
 
 func paramName(ctx *gin.Context) (string, bool) {
@@ -1243,30 +1311,23 @@ func loadPTZCameras() (map[string]PTZConfig, error) {
 	ptzCameras := make(map[string]PTZConfig)
 
 	for name, pathConfig := range config.Paths {
-		// Only process paths with ptz: true
-		if !pathConfig.PTZ {
+		// PTZ가 활성화되고 PTZSource가 설정된 경로만 처리
+		if !pathConfig.PTZ || pathConfig.PTZSource == "" {
 			continue
 		}
 
-		// Parse RTSP URL to extract host, username, password
-		parsedURL, err := url.Parse(pathConfig.Source)
+		// PTZ URL 파싱: protocol://user:pass@host:port
+		protocol, host, port, username, password, err := parsePTZURL(pathConfig.PTZSource)
 		if err != nil {
+			fmt.Printf("Warning: Failed to parse PTZ URL for %s: %v\n", name, err)
 			continue
-		}
-
-		host := parsedURL.Hostname()
-		username := ""
-		password := ""
-
-		if parsedURL.User != nil {
-			username = parsedURL.User.Username()
-			password, _ = parsedURL.User.Password()
 		}
 
 		if host != "" && username != "" {
 			ptzCameras[name] = PTZConfig{
+				Protocol: protocol,
 				Host:     host,
-				PTZPort:  pathConfig.PTZPort,
+				PTZPort:  port,
 				Username: username,
 				Password: password,
 			}
@@ -1276,12 +1337,32 @@ func loadPTZCameras() (map[string]PTZConfig, error) {
 	return ptzCameras, nil
 }
 
-// getPTZConfig retrieves PTZ configuration for a specific camera from cache
+// getPTZConfig 캐시에서 특정 카메라의 PTZ 설정 조회
 func (a *API) getPTZConfig(cameraName string) (PTZConfig, bool) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 	config, exists := a.ptzCameras[cameraName]
 	return config, exists
+}
+
+// createPTZController PTZ 설정으로부터 컨트롤러 생성 및 연결
+func createPTZController(config PTZConfig) (ptz.Controller, error) {
+	controller, err := ptz.NewController(ptz.ControllerConfig{
+		Protocol: config.Protocol,
+		Host:     config.Host,
+		Port:     config.PTZPort,
+		Username: config.Username,
+		Password: config.Password,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PTZ controller: %w", err)
+	}
+
+	if err := controller.Connect(); err != nil {
+		return nil, fmt.Errorf("failed to connect to PTZ camera: %w", err)
+	}
+
+	return controller, nil
 }
 
 func (a *API) onPTZMove(ctx *gin.Context) {
@@ -1305,8 +1386,16 @@ func (a *API) onPTZMove(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
-	err := ptzController.Move(req.Pan, req.Tilt, req.Zoom)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
+
+	err = ptzController.Move(req.Pan, req.Tilt, req.Zoom)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
 			Success: false,
@@ -1333,8 +1422,15 @@ func (a *API) onPTZStop(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
-	err := ptzController.Stop()
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
+	err = ptzController.Stop()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
 			Success: false,
@@ -1372,8 +1468,15 @@ func (a *API) onPTZFocus(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
-	err := ptzController.Focus(req.Speed)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
+	err = ptzController.Focus(req.Speed)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
 			Success: false,
@@ -1411,8 +1514,15 @@ func (a *API) onPTZIris(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
-	err := ptzController.Iris(req.Speed)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
+	err = ptzController.Iris(req.Speed)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
 			Success: false,
@@ -1439,7 +1549,14 @@ func (a *API) onPTZStatus(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	status, err := ptzController.GetStatus()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1467,7 +1584,14 @@ func (a *API) onPTZPresets(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	presets, err := ptzController.GetPresets()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1505,7 +1629,14 @@ func (a *API) onPTZGotoPreset(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	err = ptzController.GotoPreset(presetID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1558,7 +1689,14 @@ func (a *API) onPTZSetPreset(ctx *gin.Context) {
 		req.Name = fmt.Sprintf("Preset%d", presetID)
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	err = ptzController.SetPreset(presetID, req.Name)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1579,8 +1717,8 @@ func (a *API) onPTZSetPreset(ctx *gin.Context) {
 		return
 	}
 
-	// Find the created preset in the list
-	var createdPreset *ptz.PTZPreset
+	// 생성된 프리셋을 목록에서 찾기
+	var createdPreset *ptz.Preset
 	for i := range presets {
 		if presets[i].ID == presetID {
 			createdPreset = &presets[i]
@@ -1624,7 +1762,14 @@ func (a *API) onPTZDeletePreset(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	err = ptzController.DeletePreset(presetID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1666,7 +1811,14 @@ func (a *API) onPTZGetFocus(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	imageSettings, err := ptzController.GetImageSettings()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1678,7 +1830,7 @@ func (a *API) onPTZGetFocus(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, PTZResponse{
 		Success: true,
-		Data:    imageSettings.FocusConfiguration,
+		Data:    imageSettings,
 	})
 }
 
@@ -1694,7 +1846,14 @@ func (a *API) onPTZGetIris(ctx *gin.Context) {
 		return
 	}
 
-	ptzController := ptz.NewHikvisionPTZ(config.Host, config.PTZPort, config.Username, config.Password)
+	ptzController, err := createPTZController(config)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, PTZResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to create PTZ controller: %v", err),
+		})
+		return
+	}
 	imageSettings, err := ptzController.GetImageSettings()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, PTZResponse{
@@ -1706,6 +1865,6 @@ func (a *API) onPTZGetIris(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, PTZResponse{
 		Success: true,
-		Data:    imageSettings.Iris,
+		Data:    imageSettings,
 	})
 }
