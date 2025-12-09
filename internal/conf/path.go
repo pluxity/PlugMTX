@@ -121,8 +121,8 @@ type Path struct {
 	SRTReadPassphrase          string   `json:"srtReadPassphrase"`
 	Fallback                   string   `json:"fallback"`
 	UseAbsoluteTimestamp       bool     `json:"useAbsoluteTimestamp"`
-	PTZ                        bool     `json:"ptz"`     // PTZ control support
-	PTZPort                    int      `json:"ptzPort"` // PTZ control port
+	PTZ                        bool     `json:"ptz"`       // PTZ enabled/disabled
+	PTZSource                  string   `json:"ptzSource"` // PTZ control URL (onvif://user:pass@host:port or hikvision://user:pass@host:port)
 
 	// Record
 	Record                bool         `json:"record"`

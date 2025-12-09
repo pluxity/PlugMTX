@@ -1,6 +1,6 @@
 # PTZ API 명세서
 
-MediaMTX PTZ (Pan-Tilt-Zoom) 제어 API 문서입니다. Hikvision 카메라의 PTZ 기능을 HTTP API를 통해 제어할 수 있습니다.
+MediaMTX PTZ (Pan-Tilt-Zoom) 제어 API 문서입니다. ONVIF 표준 프로토콜을 사용하여 다양한 제조사의 PTZ 카메라를 HTTP API를 통해 제어할 수 있습니다.
 
 ## Base URL
 
@@ -466,7 +466,7 @@ paths:
   CCTV-TEST-001:
     source: rtsp://admin:password@192.168.1.100:554/Streaming/Channels/101
     ptz: true          # PTZ 기능 활성화
-    ptzPort: 80        # Hikvision ISAPI 포트 (일반적으로 80)
+    ptzPort: 80        # ONVIF 서비스 포트 (일반적으로 80)
 ```
 
 ### 설정 파라미터
@@ -475,36 +475,38 @@ paths:
 |---------|------|------|------|
 | source | string | 필수 | RTSP URL (username:password 포함) |
 | ptz | boolean | 필수 | PTZ 기능 활성화 여부 (true로 설정) |
-| ptzPort | int | 선택 | Hikvision ISAPI 포트 (기본값: 80) |
+| ptzPort | int | 선택 | ONVIF 서비스 포트 (기본값: 80) |
 
 ---
 
 ## 지원 카메라
 
-현재 Hikvision ISAPI 프로토콜을 지원하는 카메라에서 테스트되었습니다.
+ONVIF 표준 프로토콜을 지원하는 모든 PTZ 카메라와 호환됩니다. (Hikvision, Dahua, Axis, Sony 등)
 
-### 테스트된 기능
+### 구현된 기능
 
-- ✅ Pan/Tilt/Zoom 제어
-- ✅ 포커스 조정
-- ✅ 조리개 조정
+- ✅ Pan/Tilt/Zoom 제어 (ContinuousMove)
+- ⚠️ 포커스 조정 (Imaging 서비스 필요 - 미구현)
+- ⚠️ 조리개 조정 (Imaging 서비스 필요 - 미구현)
 - ✅ 프리셋 CRUD (생성, 조회, 이동, 삭제)
-- ✅ Digest 인증 (qop="auth" 지원)
-- ✅ 상태 조회
+- ✅ WS-Security 인증
+- ✅ PTZ 상태 조회
 
 ---
 
 ## 참고사항
 
-1. **연속 이동 제어**: `/move` 엔드포인트는 연속적인 이동 명령을 보냅니다. 이동을 멈추려면 반드시 `/stop`을 호출하거나 속도를 0으로 설정해야 합니다.
+1. **연속 이동 제어**: `/move` 엔드포인트는 ONVIF ContinuousMove 명령을 사용합니다. 이동을 멈추려면 반드시 `/stop`을 호출하거나 속도를 0으로 설정해야 합니다.
 
-2. **프리셋 ID 범위**: Hikvision 카메라는 일반적으로 1-300번의 프리셋을 지원합니다.
+2. **프리셋 ID 범위**: ONVIF 카메라는 일반적으로 여러 프리셋을 지원합니다. 카메라마다 지원하는 프리셋 개수가 다를 수 있습니다.
 
 3. **동시 제어**: 하나의 카메라에 대해 동시에 여러 제어 명령을 보낼 수 있습니다 (예: pan + tilt + zoom을 동시에).
 
-4. **인증**: 카메라의 RTSP URL에 포함된 username/password가 ISAPI 제어에도 사용됩니다.
+4. **인증**: 카메라의 RTSP URL에 포함된 username/password가 ONVIF 제어에도 사용됩니다. WS-Security 표준 인증을 사용합니다.
 
-5. **포트 설정**: `ptzPort`를 지정하지 않으면 기본 HTTP 포트(80)가 사용됩니다.
+5. **포트 설정**: `ptzPort`를 지정하지 않으면 기본 HTTP 포트(80)가 사용됩니다. ONVIF 서비스 엔드포인트는 `http://[host]:[port]/onvif/device_service`입니다.
+
+6. **Focus/Iris 제어**: 현재 Focus와 Iris 조정 기능은 ONVIF Imaging 서비스가 필요하여 "not yet implemented" 에러를 반환합니다. 향후 구현 예정입니다.
 
 ---
 

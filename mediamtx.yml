@@ -69,15 +69,15 @@ paths:
   CCTV-TEST-001:
     source: rtsp://admin:live0416@14.51.233.129:31554/Streaming/Channels/101
     ptz: true
-    ptzPort: 10081
+    ptzSource: onvif://admin:pluxity123!@#@14.51.233.129:10081
   CCTV-TEST-002:
     source: rtsp://admin:live0416@14.51.233.129:32554/Streaming/Channels/101
     ptz: true
-    ptzPort: 10082
+    ptzSource: onvif://admin:pluxity123!@#@14.51.233.129:10081
   CCTV-TEST-003:
     source: rtsp://admin:live0416@14.51.233.129:33554/Streaming/Channels/101
     ptz: true
-    ptzPort: 10083
+    ptzSource: onvif://admin:pluxity123!@#@14.51.233.129:10081
 
   #   천안일봉공원BL2
   CCTV-CHEONAN-21:

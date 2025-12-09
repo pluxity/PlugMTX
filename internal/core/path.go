@@ -590,8 +590,8 @@ func (pa *path) doAPIPathsGet(req pathAPIPathsGetReq) {
 				}
 				return ret
 			}(),
-			PTZ:     pa.conf.PTZ,
-			PTZPort: pa.conf.PTZPort,
+			PTZ:       pa.conf.PTZ,
+			PTZSource: pa.conf.PTZSource,
 		},
 	}
 }
