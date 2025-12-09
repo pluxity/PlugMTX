@@ -323,9 +323,9 @@ func (a *API) Initialize() error {
 		ptzGroup.GET("/:camera/iris", a.onPTZGetIris)
 		ptzGroup.GET("/:camera/status", a.onPTZStatus)
 		ptzGroup.GET("/:camera/presets", a.onPTZPresets)
-		ptzGroup.POST("/:camera/preset/:presetId", a.onPTZGotoPreset)
-		ptzGroup.PUT("/:camera/preset/:presetId", a.onPTZSetPreset)
-		ptzGroup.DELETE("/:camera/preset/:presetId", a.onPTZDeletePreset)
+		ptzGroup.POST("/:camera/presets/:presetId", a.onPTZGotoPreset)
+		ptzGroup.PUT("/:camera/presets/:presetId", a.onPTZSetPreset)
+		ptzGroup.DELETE("/:camera/presets/:presetId", a.onPTZDeletePreset)
 	}
 
 	a.httpServer = &httpp.Server{
@@ -373,7 +373,7 @@ func (a *API) writeError(ctx *gin.Context, status int, err error) {
 func (a *API) middlewarePreflightRequests(ctx *gin.Context) {
 	if ctx.Request.Method == http.MethodOptions &&
 		ctx.Request.Header.Get("Access-Control-Request-Method") != "" {
-		ctx.Header("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PATCH, DELETE")
+		ctx.Header("Access-Control-Allow-Methods", "OPTIONS, PUT, GET, POST, PATCH, DELETE")
 		ctx.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		ctx.AbortWithStatus(http.StatusNoContent)
 		return
