@@ -338,6 +338,11 @@ func (pconf *Path) validate(
 
 	// common configuration errors
 
+	// PTZ validation
+	if pconf.PTZ && strings.TrimSpace(pconf.PTZSource) == "" {
+		return fmt.Errorf("'ptzSource' must be provided when 'ptz' is enabled")
+	}
+
 	if pconf.Source != "publisher" && pconf.Source != "redirect" &&
 		pconf.Regexp != nil && !pconf.SourceOnDemand {
 		return fmt.Errorf("a path with a regular expression (or path 'all') and a static source" +

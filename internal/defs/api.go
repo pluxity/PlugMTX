@@ -85,8 +85,9 @@ type APIPath struct {
 	BytesReceived uint64                  `json:"bytesReceived"`
 	BytesSent     uint64                  `json:"bytesSent"`
 	Readers       []APIPathSourceOrReader `json:"readers"`
-	PTZ           bool                    `json:"ptz"`       // PTZ enabled/disabled
-	PTZSource     string                  `json:"ptzSource"` // PTZ URL (onvif://user:pass@host:port or hikvision://user:pass@host:port)
+	PTZ           bool                    `json:"ptz"`     // PTZ enabled/disabled
+	PTZType       string                  `json:"ptzType"` // Exposed protocol only (e.g., onvif, isapi, hikvision)
+	PTZSource     string                  `json:"-"`       // Internal use only; hidden from API JSON
 }
 
 // APIPathList is a list of paths.

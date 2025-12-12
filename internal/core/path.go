@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -590,8 +591,19 @@ func (pa *path) doAPIPathsGet(req pathAPIPathsGetReq) {
 				}
 				return ret
 			}(),
-			PTZ:       pa.conf.PTZ,
-			PTZSource: pa.conf.PTZSource,
+			PTZ: pa.conf.PTZ,
+			PTZType: func() string {
+				src := pa.conf.PTZSource
+				if src == "" {
+					return ""
+				}
+				// extract prefix before "://" if present
+				if i := strings.Index(src, "://"); i > 0 {
+					return src[:i]
+				}
+				return ""
+			}(),
+			PTZSource: pa.conf.PTZSource, // kept internally; hidden from JSON
 		},
 	}
 }
