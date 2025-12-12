@@ -374,6 +374,12 @@ components:
         useAbsoluteTimestamp:
           type: boolean
 
+        # PTZ
+        ptz:
+          type: boolean
+        ptzSource:
+          type: string
+
         # Record
         record:
           type: boolean
@@ -590,6 +596,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PathReader'
+
+        # PTZ
+        ptz:
+          type: boolean
+        ptzType:
+          type: string
 
     PathList:
       type: object
