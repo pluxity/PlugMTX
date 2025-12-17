@@ -1,0 +1,397 @@
+# --- 로그 설정 ---
+logLevel: info
+logDestinations: [stdout, file]
+#logFile: /var/log/mediamtx/mediamtx.log
+logFile: ./mediamtx.log
+
+# --- API 설정 ---
+api: yes
+apiAddress: :9997
+
+# --- HLS 설정 (Low Latency) ---
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: no           # 모든 경로에서 항상 HLS 스트리밍 생성
+hlsVariant: lowLatency        # 저지연 HLS 형식
+hlsSegmentCount: 7            # 재생 목록에 포함할 세그먼트 수
+hlsSegmentDuration: 1s        # 각 세그먼트 길이 (짧을수록 저지연)
+hlsPartDuration: 200ms        # 저지연 파트 길이
+
+# --- RTSP 설정 ---
+rtsp: yes
+rtspAddress: :8121
+
+# --- WebRTC 설정 ---
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcAdditionalHosts:
+  - 192.168.10.181
+webrtcAllowOrigin: "*"
+webrtcICEServers2:
+  - url: stun:stun.l.google.com:19302
+  - url: turn:14.51.233.129:3478
+    username: pluxity
+    password: pluxity0304
+
+
+# --- 인증 설정 (핵심 해결책: 올바른 키 이름과 구조) ---
+# 'auth' 블록이 아니라, 아래의 키들이 직접 최상위 레벨에 위치해야 합니다.
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    permissions:
+      - action: api
+      - action: publish
+      - action: read
+      - action: pprof
+
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# 성능 모니터링을 위한 pprof 호환 엔드포인트를 활성화합니다.
+pprof: yes
+# pprof 리스너 주소입니다.
+pprofAddress: :9999
+
+
+# --- 경로 기본 설정 ---
+pathDefaults:
+  sourceOnDemand: yes
+  rtspTransport: tcp
+
+# --- 개별 경로 설정 ---
+paths:
+  #    제주위파크1블럭
+  CCTV-JEJU1-31:
+    source: rtsp://admin:live0416@221.162.21.246:31554/profile1/media.smp
+  CCTV-JEJU1-32:
+    source: rtsp://admin:live0416@221.162.21.246:32554/profile1/media.smp
+  CCTV-JEJU1-33:
+    source: rtsp://admin:live0416@221.162.21.246:33554/profile1/media.smp
+  CCTV-JEJU1-34:
+    source: rtsp://admin:live0416@221.162.21.246:34554/profile1/media.smp
+  CCTV-JEJU1-35:
+    source: rtsp://admin:live0416@221.162.21.246:35554/profile1/media.smp
+  CCTV-JEJU1-36:
+    source: rtsp://admin:live0416@221.162.21.246:36554/profile1/media.smp
+  CCTV-JEJU1-37:
+    source: rtsp://admin:live0416@221.162.21.246:37554/profile1/media.smp
+  CCTV-JEJU1-38:
+    source: rtsp://admin:live0416@221.162.21.246:38554/profile1/media.smp
+  CCTV-JEJU1-39:
+    source: rtsp://admin:live0416@221.162.21.246:39554/profile1/media.smp
+  CCTV-JEJU1-40:
+    source: rtsp://admin:live0416@221.162.21.246:40554/profile1/media.smp
+  CCTV-JEJU1-41:
+    source: rtsp://admin:live0416@221.162.21.246:41554/profile1/media.smp
+  CCTV-JEJU1-42:
+    source: rtsp://admin:live0416@221.162.21.246:42554/profile1/media.smp
+  CCTV-JEJU1-43:
+    source: rtsp://admin:live0416@221.162.21.246:43554/profile1/media.smp
+  CCTV-JEJU1-44:
+    source: rtsp://admin:live0416@221.162.21.246:44554/profile1/media.smp
+  CCTV-JEJU1-45:
+    source: rtsp://admin:live0416@221.162.21.246:45554/profile1/media.smp
+
+  #   제주위파크2블럭
+  CCTV-JEJU2-31:
+    source: rtsp://admin:live0416@121.189.117.243:31554/profile1/media.smp
+  CCTV-JEJU2-32:
+    source: rtsp://admin:live0416@121.189.117.243:32554/profile1/media.smp
+  CCTV-JEJU2-33:
+    source: rtsp://admin:live0416@121.189.117.243:33554/profile1/media.smp
+  CCTV-JEJU2-34:
+    source: rtsp://admin:live0416@121.189.117.243:34554/profile1/media.smp
+  CCTV-JEJU2-35:
+    source: rtsp://admin:live0416@121.189.117.243:35554/profile1/media.smp
+  CCTV-JEJU2-36:
+    source: rtsp://admin:live0416@121.189.117.243:36554/profile1/media.smp
+  CCTV-JEJU2-37:
+    source: rtsp://admin:live0416@121.189.117.243:37554/profile1/media.smp
+  CCTV-JEJU2-38:
+    source: rtsp://admin:live0416@121.189.117.243:38554/profile1/media.smp
+  CCTV-JEJU2-39:
+    source: rtsp://admin:live0416@121.189.117.243:39554/profile1/media.smp
+  CCTV-JEJU2-40:
+    source: rtsp://admin:live0416@121.189.117.243:40554/profile1/media.smp
+  CCTV-JEJU2-41:
+    source: rtsp://admin:live0416@121.189.117.243:41554/profile1/media.smp
+  CCTV-JEJU2-42:
+    source: rtsp://admin:live0416@121.189.117.243:42554/profile1/media.smp
+  CCTV-JEJU2-43:
+    source: rtsp://admin:live0416@121.189.117.243:43554/profile1/media.smp
+  CCTV-JEJU2-44:
+    source: rtsp://admin:live0416@121.189.117.243:44554/profile1/media.smp
+  CCTV-JEJU2-45:
+    source: rtsp://admin:live0416@121.189.117.243:45554/profile1/media.smp
+
+#     천안일봉공원BL2
+  CCTV-CHEONAN-21:
+    source: rtsp://admin:live0416@221.158.235.7:21554/profile1/media.smp
+  CCTV-CHEONAN-22:
+    source: rtsp://admin:live0416@221.158.235.7:22554/profile1/media.smp
+  CCTV-CHEONAN-23:
+    source: rtsp://admin:live0416@221.158.235.7:23554/profile1/media.smp
+  CCTV-CHEONAN-24:
+    source: rtsp://admin:live0416@221.158.235.7:24554/profile1/media.smp
+  CCTV-CHEONAN-25:
+    source: rtsp://admin:live0416@221.158.235.7:25554/profile1/media.smp
+  CCTV-CHEONAN-26:
+    source: rtsp://admin:live0416@221.158.235.7:26554/profile1/media.smp
+  CCTV-CHEONAN-27:
+    source: rtsp://admin:live0416@221.158.235.7:27554/profile1/media.smp
+  CCTV-CHEONAN-28:
+    source: rtsp://admin:live0416@221.158.235.7:28554/profile1/media.smp
+  CCTV-CHEONAN-29:
+    source: rtsp://admin:live0416@221.158.235.7:29554/profile1/media.smp
+  CCTV-CHEONAN-30:
+    source: rtsp://admin:live0416@221.158.235.7:30554/profile1/media.smp
+  CCTV-CHEONAN-31:
+    source: rtsp://admin:live0416@221.158.235.7:31554/profile1/media.smp
+  CCTV-CHEONAN-32:
+    source: rtsp://admin:live0416@221.158.235.7:32554/profile1/media.smp
+
+
+  #   양재 청년주택 1지구
+  CCTV-YANGJAE-10:
+     source: rtsp://admin:live0416@221.148.251.246:10554/profile1/media.smp
+
+  CCTV-YANGJAE-20:
+    source: rtsp://admin:live0416@221.148.251.246:20554/profile1/media.smp
+  CCTV-YANGJAE-30:
+     source: rtsp://admin:live0416@221.148.251.246:30554/profile1/media.smp
+
+  CCTV-YANGJAE-40:
+    source: rtsp://admin:live0416@221.148.251.246:40554/profile1/media.smp
+
+
+  #   인천연희공원
+  CCTV-YEONHEE-51:
+    source: rtsp://admin:live0416@218.148.86.142:30551/profile1/media.smp
+  CCTV-YEONHEE-52:
+    source: rtsp://admin:live0416@218.148.86.142:30552/profile1/media.smp
+  CCTV-YEONHEE-53:
+    source: rtsp://admin:live0416@218.148.86.142:30553/profile1/media.smp
+  CCTV-YEONHEE-54:
+    source: rtsp://admin:live0416@218.148.86.142:30554/profile1/media.smp
+  CCTV-YEONHEE-55:
+    source: rtsp://admin:live0416@218.148.86.142:30555/profile1/media.smp
+  CCTV-YEONHEE-56:
+    source: rtsp://admin:live0416@218.148.86.142:30556/profile1/media.smp
+  CCTV-YEONHEE-57:
+    source: rtsp://admin:live0416@218.148.86.142:30557/profile1/media.smp
+  CCTV-YEONHEE-58:
+    source: rtsp://admin:live0416@218.148.86.142:30558/profile1/media.smp
+  CCTV-YEONHEE-59:
+    source: rtsp://admin:live0416@218.148.86.142:30559/profile1/media.smp
+  CCTV-YEONHEE-60:
+    source: rtsp://admin:live0416@218.148.86.142:30560/profile1/media.smp
+
+
+  #   오산세교A13
+  CCTV-OSAN-31:
+    source: rtsp://admin:live0416@121.168.196.179:31554/profile1/media.smp
+  CCTV-OSAN-32:
+    source: rtsp://admin:live0416@121.168.196.179:32554/profile1/media.smp
+  CCTV-OSAN-33:
+    source: rtsp://admin:live0416@121.168.196.179:33554/profile1/media.smp
+  CCTV-OSAN-34:
+    source: rtsp://admin:live0416@121.168.196.179:34554/profile1/media.smp
+  CCTV-OSAN-35:
+    source: rtsp://admin:live0416@121.168.196.179:35554/profile1/media.smp
+  CCTV-OSAN-36:
+    source: rtsp://admin:live0416@121.168.196.179:36554/profile1/media.smp
+  CCTV-OSAN-37:
+    source: rtsp://admin:live0416@121.168.196.179:37554/profile1/media.smp
+  CCTV-OSAN-38:
+    source: rtsp://admin:live0416@121.168.196.179:38554/profile1/media.smp
+  CCTV-OSAN-39:
+    source: rtsp://admin:live0416@121.168.196.179:39554/profile1/media.smp
+  CCTV-OSAN-40:
+    source: rtsp://admin:live0416@121.168.196.179:40554/profile1/media.smp
+  CCTV-OSAN-41:
+    source: rtsp://admin:live0416@121.168.196.179:41554/profile1/media.smp
+  CCTV-OSAN-42:
+    source: rtsp://admin:live0416@121.168.196.179:42554/profile1/media.smp
+  CCTV-OSAN-43:
+    source: rtsp://admin:live0416@121.168.196.179:43554/profile1/media.smp
+  CCTV-OSAN-44:
+    source: rtsp://admin:live0416@121.168.196.179:44554/profile1/media.smp
+  CCTV-OSAN-45:
+    source: rtsp://admin:live0416@121.168.196.179:45554/profile1/media.smp
+
+
+  #   안동옥송상록공원
+  CCTV-ANDONG-21:
+    source: rtsp://admin:live0416@222.104.198.41:21554/profile1/media.smp
+  CCTV-ANDONG-22:
+    source: rtsp://admin:live0416@222.104.198.41:22554/profile1/media.smp
+  CCTV-ANDONG-23:
+    source: rtsp://admin:live0416@222.104.198.41:23554/profile1/media.smp
+  CCTV-ANDONG-24:
+    source: rtsp://admin:live0416@222.104.198.41:24554/profile1/media.smp
+  CCTV-ANDONG-25:
+    source: rtsp://admin:live0416@222.104.198.41:25554/profile1/media.smp
+  CCTV-ANDONG-26:
+    source: rtsp://admin:live0416@222.104.198.41:26554/profile1/media.smp
+  CCTV-ANDONG-27:
+     source: rtsp://admin:live0416@222.104.198.41:27554/profile1/media.smp
+  CCTV-ANDONG-28:
+    source: rtsp://admin:live0416@222.104.198.41:28554/profile1/media.smp
+  CCTV-ANDONG-29:
+    source: rtsp://admin:live0416@222.104.198.41:29554/profile1/media.smp
+  CCTV-ANDONG-30:
+    source: rtsp://admin:live0416@222.104.198.41:30554/profile1/media.smp
+  CCTV-ANDONG-31:
+    source: rtsp://admin:live0416@222.104.198.41:31554/profile1/media.smp
+  CCTV-ANDONG-32:
+     source: rtsp://admin:live0416@222.104.198.41:32554/profile1/media.smp
+  CCTV-ANDONG-33:
+    source: rtsp://admin:live0416@222.104.198.41:33554/profile1/media.smp
+
+
+  #   인천검단3차
+  CCTV-GEOMDAN-21:
+    source: rtsp://admin:live0416@211.195.173.66:21554/profile1/media.smp
+  CCTV-GEOMDAN-22:
+    source: rtsp://admin:live0416@211.195.173.66:22554/profile1/media.smp
+  CCTV-GEOMDAN-23:
+    source: rtsp://admin:live0416@211.195.173.66:23554/profile1/media.smp
+  CCTV-GEOMDAN-24:
+    source: rtsp://admin:live0416@211.195.173.66:24554/profile1/media.smp
+  CCTV-GEOMDAN-25:
+    source: rtsp://admin:live0416@211.195.173.66:25554/profile1/media.smp
+  CCTV-GEOMDAN-26:
+    source: rtsp://admin:live0416@211.195.173.66:26554/profile1/media.smp
+  CCTV-GEOMDAN-27:
+    source: rtsp://admin:live0416@211.195.173.66:27554/profile1/media.smp
+  CCTV-GEOMDAN-28:
+    source: rtsp://admin:live0416@211.195.173.66:28554/profile1/media.smp
+  CCTV-GEOMDAN-29:
+    source: rtsp://admin:live0416@211.195.173.66:29554/profile1/media.smp
+  CCTV-GEOMDAN-30:
+    source: rtsp://admin:live0416@211.195.173.66:30554/profile1/media.smp
+  CCTV-GEOMDAN-31:
+    source: rtsp://admin:live0416@211.195.173.66:31554/profile1/media.smp
+  CCTV-GEOMDAN-32:
+    source: rtsp://admin:live0416@211.195.173.66:32554/profile1/media.smp
+
+#   당진 해저케이블2공장
+  CCTV-DANGJIN-31:
+    source: rtsp://admin:live0416@59.25.78.21:31554/profile1/media.smp
+  CCTV-DANGJIN-32:
+    source: rtsp://admin:live0416@59.25.78.21:32554/profile1/media.smp
+  CCTV-DANGJIN-33:
+    source: rtsp://admin:live0416@59.25.78.21:33554/profile1/media.smp
+  CCTV-DANGJIN-34:
+    source: rtsp://admin:live0416@59.25.78.21:34554/profile1/media.smp
+  CCTV-DANGJIN-35:
+    source: rtsp://admin:live0416@59.25.78.21:35554/profile1/media.smp
+  CCTV-DANGJIN-36:
+    source: rtsp://admin:live0416@59.25.78.21:36554/profile1/media.smp
+
+    # 충남 CCTV 스트림
+  GOV-001:
+    source: rtsp://210.99.70.120:1935/live/cctv001.stream
+  GOV-002:
+    source: rtsp://210.99.70.120:1935/live/cctv002.stream
+  GOV-003:
+    source: rtsp://210.99.70.120:1935/live/cctv003.stream
+  GOV-004:
+    source: rtsp://210.99.70.120:1935/live/cctv004.stream
+  GOV-005:
+    source: rtsp://210.99.70.120:1935/live/cctv005.stream
+  GOV-006:
+    source: rtsp://210.99.70.120:1935/live/cctv006.stream
+  GOV-007:
+    source: rtsp://210.99.70.120:1935/live/cctv007.stream
+  GOV-008:
+    source: rtsp://210.99.70.120:1935/live/cctv008.stream
+  GOV-009:
+    source: rtsp://210.99.70.120:1935/live/cctv009.stream
+  GOV-010:
+    source: rtsp://210.99.70.120:1935/live/cctv010.stream
+  GOV-011:
+    source: rtsp://210.99.70.120:1935/live/cctv011.stream
+  GOV-012:
+    source: rtsp://210.99.70.120:1935/live/cctv012.stream
+  GOV-013:
+    source: rtsp://210.99.70.120:1935/live/cctv013.stream
+  GOV-014:
+    source: rtsp://210.99.70.120:1935/live/cctv014.stream
+  GOV-015:
+    source: rtsp://210.99.70.120:1935/live/cctv015.stream
+  GOV-016:
+    source: rtsp://210.99.70.120:1935/live/cctv016.stream
+  GOV-017:
+    source: rtsp://210.99.70.120:1935/live/cctv017.stream
+  GOV-018:
+    source: rtsp://210.99.70.120:1935/live/cctv018.stream
+  GOV-019:
+    source: rtsp://210.99.70.120:1935/live/cctv019.stream
+  GOV-020:
+    source: rtsp://210.99.70.120:1935/live/cctv020.stream
+  GOV-021:
+    source: rtsp://210.99.70.120:1935/live/cctv021.stream
+  GOV-022:
+    source: rtsp://210.99.70.120:1935/live/cctv022.stream
+  GOV-023:
+    source: rtsp://210.99.70.120:1935/live/cctv023.stream
+  GOV-024:
+    source: rtsp://210.99.70.120:1935/live/cctv024.stream
+  GOV-025:
+    source: rtsp://210.99.70.120:1935/live/cctv025.stream
+  GOV-026:
+    source: rtsp://210.99.70.120:1935/live/cctv026.stream
+  GOV-027:
+    source: rtsp://210.99.70.120:1935/live/cctv027.stream
+  GOV-028:
+    source: rtsp://210.99.70.120:1935/live/cctv028.stream
+  GOV-029:
+    source: rtsp://210.99.70.120:1935/live/cctv029.stream
+  GOV-030:
+    source: rtsp://210.99.70.120:1935/live/cctv030.stream
+  GOV-031:
+    source: rtsp://210.99.70.120:1935/live/cctv031.stream
+  GOV-032:
+    source: rtsp://210.99.70.120:1935/live/cctv032.stream
+  GOV-033:
+    source: rtsp://210.99.70.120:1935/live/cctv033.stream
+  GOV-034:
+    source: rtsp://210.99.70.120:1935/live/cctv034.stream
+  GOV-035:
+    source: rtsp://210.99.70.120:1935/live/cctv035.stream
+  GOV-036:
+    source: rtsp://210.99.70.120:1935/live/cctv036.stream
+  GOV-037:
+    source: rtsp://210.99.70.120:1935/live/cctv037.stream
+  GOV-038:
+    source: rtsp://210.99.70.120:1935/live/cctv038.stream
+  GOV-039:
+    source: rtsp://210.99.70.120:1935/live/cctv039.stream
+  GOV-040:
+    source: rtsp://210.99.70.120:1935/live/cctv040.stream
+  GOV-041:
+    source: rtsp://210.99.70.120:1935/live/cctv041.stream
+  GOV-042:
+    source: rtsp://210.99.70.120:1935/live/cctv042.stream
+  GOV-043:
+    source: rtsp://210.99.70.120:1935/live/cctv043.stream
+  GOV-044:
+    source: rtsp://210.99.70.120:1935/live/cctv044.stream
+  GOV-045:
+    source: rtsp://210.99.70.120:1935/live/cctv045.stream
+  GOV-046:
+    source: rtsp://210.99.70.120:1935/live/cctv046.stream
+  GOV-047:
+    source: rtsp://210.99.70.120:1935/live/cctv047.stream
+  GOV-048:
+    source: rtsp://210.99.70.120:1935/live/cctv048.stream
+  GOV-049:
+    source: rtsp://210.99.70.120:1935/live/cctv049.stream
+  GOV-050:
+    source: rtsp://210.99.70.120:1935/live/cctv050.stream

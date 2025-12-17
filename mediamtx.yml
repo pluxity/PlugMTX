@@ -228,3 +228,11 @@ paths:
     source: rtsp://admin:live0416@121.168.196.179:45554/profile1/media.smp
     sourceOnDemand: true
     rtspTransport: tcp
+
+# 충남 CCTV 스트림
+  GOV-001:
+    source: rtsp://210.99.70.120:1935/live/cctv001.stream
+  GOV-002:
+    source: rtsp://210.99.70.120:1935/live/cctv002.stream
+  GOV-003:
+    source: rtsp://210.99.70.120:1935/live/cctv003.stream
